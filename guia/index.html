@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adeus Mensalidade — Guia de instalação</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-elevado: #f4f4f5;
+    --texto: #18181b;
+    --texto-suave: #52525b;
+    --borda: #d4d4d8;
+    --acento: #15803d;
+    --acento-texto: #ffffff;
+    --aviso-bg: #fef3c7;
+    --aviso-borda: #b45309;
+    --aviso-texto: #78350f;
+    --perigo: #b91c1c;
+    --perigo-texto: #ffffff;
+    --critico-bg: #fee2e2;
+    --critico-borda: #b91c1c;
+    --critico-texto: #7f1d1d;
+    --foco: #2563eb;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18181b;
+      --bg-elevado: #27272a;
+      --texto: #f4f4f5;
+      --texto-suave: #a1a1aa;
+      --borda: #3f3f46;
+      --acento: #22c55e;
+      --acento-texto: #052e13;
+      --aviso-bg: #451a03;
+      --aviso-borda: #d97706;
+      --aviso-texto: #fde68a;
+      --perigo: #f87171;
+      --perigo-texto: #450a0a;
+      --critico-bg: #450a0a;
+      --critico-borda: #f87171;
+      --critico-texto: #fecaca;
+      --foco: #60a5fa;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--texto);
+  }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    font-size: 17px;
+  }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 18px 96px;
+  }
+
+  header {
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 6px;
+  }
+
+  h2 {
+    font-size: 1.15rem;
+    margin: 0 0 10px;
+  }
+
+  p {
+    color: var(--texto-suave);
+    margin: 0 0 12px;
+  }
+
+  section {
+    margin-bottom: 32px;
+    padding: 16px;
+    background: var(--bg-elevado);
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+  }
+
+  a { color: var(--foco); }
+
+  /* Progresso */
+  #progresso-texto {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--texto);
+  }
+
+  #progresso-container {
+    width: 100%;
+    height: 14px;
+    background: var(--borda);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  #progresso-barra {
+    height: 100%;
+    width: 0%;
+    background: var(--acento);
+    transition: width 0.2s ease;
+  }
+
+  /* Calculadora de URL */
+  #campo-url {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--texto);
+    margin-bottom: 12px;
+  }
+
+  #campo-url:focus {
+    outline: 2px solid var(--foco);
+    outline-offset: 1px;
+  }
+
+  .linha-url {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-top: 1px solid var(--borda);
+  }
+
+  .linha-url:first-child { border-top: none; }
+
+  .linha-url .rotulo {
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+    flex-basis: 100%;
+  }
+
+  .linha-url code {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-break: break-all;
+    background: var(--bg);
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+  }
+
+  #aviso-url {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--aviso-bg);
+    border: 1px solid var(--aviso-borda);
+    color: var(--aviso-texto);
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+
+  /* Avisos embutidos dentro de um passo */
+  .aviso-passo {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--aviso-bg);
+    border: 1px solid var(--aviso-borda);
+    border-left: 4px solid var(--aviso-borda);
+    color: var(--aviso-texto);
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+
+  .aviso-passo p { color: inherit; margin: 0 0 8px; }
+  .aviso-passo p:last-child { margin-bottom: 0; }
+  .aviso-passo ul, .aviso-passo ol { margin: 4px 0 8px; padding-left: 20px; }
+  .aviso-passo li { margin-bottom: 4px; }
+  .aviso-passo .rotulo-aviso {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+  }
+
+  .aviso-passo.critico {
+    background: var(--critico-bg);
+    border-color: var(--critico-borda);
+    color: var(--critico-texto);
+  }
+
+  /* Conteúdo dentro do detalhe de um passo (parágrafos e listas) */
+  .detalhe-passo p { margin: 0 0 8px; }
+  .detalhe-passo p:last-child { margin-bottom: 0; }
+  .detalhe-passo ul, .detalhe-passo ol { margin: 4px 0 8px; padding-left: 20px; }
+  .detalhe-passo li { margin-bottom: 4px; }
+
+  .detalhe-passo code, .aviso-passo code {
+    background: var(--bg);
+    border: 1px solid var(--borda);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.9em;
+  }
+
+  .aviso-passo code {
+    background: var(--bg-elevado);
+  }
+
+  /* Botão de deploy embutido no passo 9 */
+  .botao-deploy {
+    display: inline-block;
+    margin: 8px 0 4px;
+    padding: 12px 18px;
+    background: var(--acento);
+    color: var(--acento-texto);
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .botao-deploy:hover { opacity: 0.9; }
+
+  /* Seção final de problemas, por sintoma */
+  details.problema {
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    background: var(--bg);
+  }
+
+  details.problema summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--texto);
+  }
+
+  details.problema[open] summary { margin-bottom: 8px; }
+
+  details.problema p, details.problema li { color: var(--texto-suave); font-size: 0.95rem; }
+  details.problema ul, details.problema ol { margin: 4px 0 8px; padding-left: 20px; }
+  details.problema code {
+    background: var(--bg-elevado);
+    border: 1px solid var(--borda);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.9em;
+  }
+
+  /* Botões */
+  button {
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--borda);
+    background: var(--bg);
+    color: var(--texto);
+    cursor: pointer;
+    min-height: 40px;
+  }
+
+  button:hover { border-color: var(--foco); }
+
+  button:focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: 1px;
+  }
+
+  button.copiar {
+    flex: 0 0 auto;
+    background: var(--acento);
+    color: var(--acento-texto);
+    border-color: var(--acento);
+  }
+
+  button#btn-recomecar {
+    background: transparent;
+    color: var(--perigo);
+    border-color: var(--perigo);
+  }
+
+  /* Lista de passos */
+  #lista-passos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li.passo {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--borda);
+  }
+
+  li.passo:last-child { border-bottom: none; }
+
+  li.passo input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    margin-top: 2px;
+    accent-color: var(--acento);
+  }
+
+  li.passo .texto-passo {
+    flex: 1 1 auto;
+  }
+
+  li.passo .titulo-passo {
+    font-weight: 600;
+    color: var(--texto);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  li.passo .detalhe-passo {
+    color: var(--texto-suave);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  li.passo:has(input:checked) .titulo-passo {
+    text-decoration: line-through;
+    color: var(--texto-suave);
+  }
+
+  .marcador-task7 {
+    text-align: center;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+    padding: 12px 0;
+    border: 1px dashed var(--borda);
+    border-radius: 8px;
+    margin: 8px 0;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 420px) {
+    body { font-size: 16px; }
+    main { padding: 16px 12px 96px; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <h1>Adeus Mensalidade — guia de instalação</h1>
+    <p>Siga os passos na ordem — cada um depende do anterior já estar pronto. Pode
+      fechar a aba e voltar depois: o que você já marcou fica salvo neste
+      navegador.</p>
+    <p>Antes de começar, separe: <strong>duas</strong> contas do Instagram (uma
+      configurada como Business ou Creator, outra qualquer, só para testar), e
+      contas gratuitas no GitHub, na Vercel, no Neon e no Meta for Developers. O
+      Passo 1 explica por que precisa das duas contas do Instagram.</p>
+  </header>
+
+  <section id="secao-progresso" aria-label="Progresso">
+    <div id="progresso-texto" aria-live="polite">0 de 0 passos concluídos</div>
+    <div id="progresso-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+      <div id="progresso-barra"></div>
+    </div>
+    <div style="margin-top: 14px;">
+      <button type="button" id="btn-recomecar">Recomeçar do zero</button>
+    </div>
+  </section>
+
+  <section id="secao-url" aria-label="Calculadora de URLs">
+    <h2>Calculadora de URLs</h2>
+    <p>Depois de publicar o app, cole o endereço dele aqui. A página monta as duas
+      URLs que você vai colar no Meta.</p>
+    <input
+      type="text"
+      id="campo-url"
+      inputmode="url"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      placeholder="meu-app.vercel.app"
+    >
+    <div id="urls-calculadas" hidden>
+      <div class="linha-url">
+        <span class="rotulo">Callback URL do webhook</span>
+        <code id="url-webhook"></code>
+        <button type="button" class="copiar" id="copiar-webhook">Copiar</button>
+      </div>
+      <div class="linha-url">
+        <span class="rotulo">URL da política de privacidade</span>
+        <code id="url-privacidade"></code>
+        <button type="button" class="copiar" id="copiar-privacidade">Copiar</button>
+      </div>
+    </div>
+    <div id="aviso-url" hidden>
+      Essa URL tem um trecho de letras e números que muda a cada nova publicação
+      (deploy). Se você usar essa aqui no webhook do Meta, funciona hoje e para de
+      funcionar silenciosamente na próxima vez que publicar. Use a URL estável do
+      seu projeto, não a que aparece impressa depois do deploy.
+    </div>
+  </section>
+
+  <section id="secao-passos" aria-label="Passo a passo">
+    <h2>Passo a passo</h2>
+    <p style="margin-bottom: 16px; font-weight: 600; color: var(--texto);">Parte 1 — No portal do Meta, antes de qualquer deploy</p>
+    <ol id="lista-passos">
+      <li class="passo" id="passo-1">
+        <input type="checkbox" id="passo-1-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 1 — Confira o tipo das suas contas do Instagram</span>
+          <div class="detalhe-passo">
+            <p>Você vai precisar de <strong>duas</strong> contas do Instagram, não
+              uma. A conta que vai rodar a automação precisa estar configurada como
+              <strong>Business</strong> ou <strong>Creator</strong> — conta pessoal
+              comum não acessa o recurso que este projeto usa, e o erro que
+              aparece mais tarde não avisa que essa é a causa. Se ainda não sabe o
+              tipo da sua conta, abra o Instagram, vá em Configurações e
+              privacidade → Conta: se existir um botão para "mudar para conta
+              profissional" ou "trocar para conta comercial", ela ainda é pessoal.</p>
+            <p>A <strong>segunda</strong> conta pode ser qualquer conta comum, e
+              serve só para testar. O motivo aparece nos Passos 5 e 16: o sistema
+              ignora de propósito os comentários feitos pela própria conta da
+              automação, para não entrar em loop de mensagens — sem uma segunda
+              conta, você não tem como ver se está funcionando.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-2">
+        <input type="checkbox" id="passo-2-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 2 — Crie o app no Meta for Developers</span>
+          <div class="detalhe-passo">
+            <p>Entre em <code>developers.facebook.com</code> com o seu login do
+              Instagram ou Facebook. Vá em <strong>Meus apps → Criar
+              aplicativo</strong>. Quando pedir o caso de uso, escolha
+              <strong>Gerenciar mensagens e conteúdo no Instagram</strong> — não é
+              Messenger, não é WhatsApp. Dê um nome ao app e crie.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-3">
+        <input type="checkbox" id="passo-3-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 3 — Abra a Configuração da API com login do Instagram</span>
+          <div class="detalhe-passo">
+            <p>Dentro do app que você acabou de criar, vá em <strong>Casos de uso
+              → Personalizar</strong>. Na barra lateral que abre, clique em
+              <strong>Configuração da API com login do Instagram</strong>. É nessa
+              página que os próximos passos acontecem.</p>
+          </div>
+          <div class="aviso-passo">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>O <strong>Instagram não aparece no menu lateral esquerdo</strong> do
+              app (que mostra Painel, Ações necessárias, Casos de uso,
+              Configurações do app, Funções do app). É fácil concluir, ao não
+              achar, que criou o app errado — não é isso. Toda a configuração do
+              Instagram vive dentro do card do caso de uso, atrás do botão
+              Personalizar, como descrito acima.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-4">
+        <input type="checkbox" id="passo-4-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 4 — Adicione as permissões obrigatórias</span>
+          <div class="detalhe-passo">
+            <p>Ainda na página de Configuração da API com login do Instagram,
+              primeiro bloco da página, clique no botão <strong>Add all required
+              permissions</strong> (o nome do botão aparece em inglês mesmo com o
+              resto da tela em português). Ele adiciona as três permissões que o
+              projeto precisa:</p>
+            <ul>
+              <li><code>instagram_business_basic</code></li>
+              <li><code>instagram_business_manage_messages</code></li>
+              <li><code>instagram_business_manage_comments</code></li>
+            </ul>
+            <p>Se algum outro tutorial mandar usar
+              <code>instagram_manage_messages</code> ou
+              <code>instagram_manage_comments</code>, ele está desatualizado: esses
+              nomes foram descontinuados pelo Meta em 27/01/2025.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-5">
+        <input type="checkbox" id="passo-5-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 5 — Atribua "Testador do Instagram" às duas contas</span>
+          <div class="detalhe-passo">
+            <p>No menu lateral esquerdo do app (fora do card do caso de uso, dessa
+              vez), vá na aba <strong>Funções</strong>. Atribua o papel
+              <strong>Testador do Instagram</strong> às <strong>duas</strong> contas
+              do Passo 1: a que vai rodar a automação, e a que você vai usar para
+              testar.</p>
+          </div>
+          <div class="aviso-passo critico">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>Existem dois nomes parecidos, e só um serve: <strong>"Testador"</strong>
+              e <strong>"Testador do Instagram"</strong> são papéis diferentes. Use
+              exatamente o segundo — só ele gera o convite que a conta precisa
+              aceitar no Passo 6.</p>
+            <p>E não é na tela <strong>"Usuários de teste"</strong>. Essa tela cria
+              contas simuladas do Facebook, não tem relação nenhuma com o
+              Instagram, e vai sempre mostrar "0 de 0" — mesmo depois de você
+              cadastrar as contas certas em Funções. Se você estiver olhando pra
+              essa tela, está no lugar errado.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-6">
+        <input type="checkbox" id="passo-6-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 6 — Aceite os convites, pelo navegador</span>
+          <div class="detalhe-passo">
+            <p>Atribuir o papel no Passo 5 apenas <em>envia um convite</em> — nada
+              na tela avisa isso. Enquanto o convite não for aceito, a conta não
+              aparece para gerar o token no Passo 7. Faça isso duas vezes, uma vez
+              logado em cada conta:</p>
+            <p>Abra, no navegador: <code>https://www.instagram.com/accounts/manage_access/</code>.
+              Vá na aba <strong>Convites de testador</strong> e aceite.</p>
+          </div>
+          <div class="aviso-passo">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>O <strong>app do Instagram no celular normalmente não mostra essa
+              tela</strong>. Faça pelo navegador — no celular, o navegador mesmo
+              (Chrome, Safari), não o app do Instagram. Se a aba vier vazia,
+              espere alguns minutos e recarregue: o convite leva um tempo para
+              propagar.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-7">
+        <input type="checkbox" id="passo-7-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 7 — Gere o token de acesso</span>
+          <div class="detalhe-passo">
+            <p>De volta à página de Configuração da API com login do Instagram,
+              segundo bloco da página, <strong>Gerar tokens de acesso → Adicionar
+              conta</strong>. Faça login com uma das contas do Passo 1 e autorize.
+              Depois clique para gerar o token e <strong>copie na hora</strong>: ele
+              some da tela e expira em cerca de 1 hora (o painel do seu app troca
+              por um de 60 dias automaticamente, mais adiante).</p>
+          </div>
+          <div class="aviso-passo critico">
+            <span class="rotulo-aviso">O erro que mais custa tempo</span>
+            <p>Se aparecer a mensagem <strong>"Não foi possível se conectar ao
+              Instagram. Verifique se você está conectado à Internet"</strong> —
+              às vezes só na segunda tentativa, depois de uma primeira que parecia
+              ter funcionado — <strong>não é a sua senha, e não é a sua
+              internet.</strong> A mensagem engana: a autenticação passa; o que
+              falha é o Instagram te trazer de volta para o Meta.</p>
+            <p>O que resolveu isso numa montagem real deste projeto: fazer o fluxo
+              inteiro <strong>pelo celular, com dados móveis, com o Wi-Fi
+              desligado</strong>. Se conectar assim, o problema era a rede ou o
+              computador que você estava usando antes. Se ainda não resolver: use
+              uma janela normal do navegador, não anônima (o modo privado bloqueia
+              cookies de terceiros e quebra esse tipo de login), e desative
+              bloqueadores de rastreamento e extensões de privacidade para
+              <code>instagram.com</code> e <code>facebook.com</code>.</p>
+            <p><strong>Não troque a senha do Instagram para tentar resolver isso.</strong>
+              O erro não é de credencial — trocar não ajuda. E contas que dividem a
+              mesma Central de Contas compartilham senha, então trocar em uma
+              troca em todas as suas contas de uma vez. Pior: a troca revoga os
+              tokens já ativos, o que cria um segundo problema em cima do
+              primeiro. Isso já aconteceu numa montagem real deste projeto e
+              custou horas.</p>
+          </div>
+          <div class="aviso-passo">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>Não tente conectar a conta pelo <code>business.facebook.com</code>
+              (Business Suite → Configurações → Contas do Instagram). É o caminho
+              que parece óbvio e não é necessário neste fluxo — essa é
+              justamente a vantagem do login do Instagram, não precisa de Página
+              do Facebook nem de nada no Business Manager. Ali costuma falhar com
+              "Sorry, something went wrong". Fique dentro do
+              <code>developers.facebook.com</code>, como no início deste passo.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-8">
+        <input type="checkbox" id="passo-8-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 8 — Copie o ID e a chave secreta do app do Instagram</span>
+          <div class="detalhe-passo">
+            <p>Ainda na mesma página (Configuração da API com login do Instagram),
+              no bloco do topo, copie o <strong>ID do aplicativo</strong> e a
+              <strong>Chave secreta do aplicativo</strong> (botão "Mostrar" para
+              revelar). Guarde os dois — você vai colar no formulário de deploy no
+              próximo passo.</p>
+          </div>
+          <div class="aviso-passo critico">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>São as credenciais do app <strong>do Instagram</strong>, desta
+              página. <strong>Não</strong> são as de "Configurações do app →
+              Básico" — aquelas são do app <strong>do Facebook</strong>, e são
+              números completamente diferentes.</p>
+            <p>Usar o par errado não dá erro nenhum agora, na configuração. O
+              sintoma só aparece depois, já em produção: toda mensagem que o Meta
+              manda para o seu site chega com assinatura inválida, e nada
+              dispara.</p>
+          </div>
+        </span>
+      </li>
+    </ol>
+
+    <p style="margin: 24px 0 16px; font-weight: 600; color: var(--texto);">Parte 2 — Deploy</p>
+    <ol id="lista-passos-2" class="lista-passos-continuacao">
+      <li class="passo" id="passo-9">
+        <input type="checkbox" id="passo-9-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 9 — Clique no botão de publicar</span>
+          <div class="detalhe-passo">
+            <p>Este botão cria a sua própria cópia do projeto, na sua conta — não
+              na conta de quem fez este guia.</p>
+            <p>
+              <a class="botao-deploy" href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao&project-name=adeus-mensalidade&repository-name=adeus-mensalidade&env=IG_APP_ID%2CIG_APP_SECRET%2CVERIFY_TOKEN%2CACCESS_TOKEN%2CPANEL_PASSWORD&envDescription=As+5+credenciais+do+app+do+Instagram+e+a+senha+do+seu+painel.+Veja+onde+encontrar+cada+uma+na+se%C3%A7%C3%A3o+Antes+de+clicar%2C+no+README.&envLink=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao%23antes-de-clicar&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D" target="_blank" rel="noopener">Publicar agora na Vercel</a>
+            </p>
+            <p>Ele pede para você entrar (ou criar conta) na Vercel, de preferência
+              direto com o seu GitHub, e conectar um repositório — deixe o botão
+              criar o dele automaticamente. Ele também já conecta o banco de dados
+              (Neon) sozinho, sem você precisar configurar nada nele.</p>
+            <p>Depois vem um formulário com cinco campos. É aqui que cada valor
+              vem:</p>
+            <ul>
+              <li><code>IG_APP_ID</code> e <code>IG_APP_SECRET</code> — os dois
+                valores que você copiou no Passo 8.</li>
+              <li><code>ACCESS_TOKEN</code> — o token que você gerou no Passo 7.</li>
+              <li><code>VERIFY_TOKEN</code> — uma palavra ou frase secreta que
+                <strong>você mesmo inventa agora</strong>. Anote-a: você vai colar
+                esse mesmo valor de novo no Passo 13.</li>
+              <li><code>PANEL_PASSWORD</code> — outra senha que você mesmo inventa,
+                para entrar no painel do seu próprio app mais tarde, no Passo 14.</li>
+            </ul>
+            <p>Preencha os cinco e conclua o deploy. Leva alguns minutos.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-10">
+        <input type="checkbox" id="passo-10-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 10 — Desligue a Vercel Authentication</span>
+          <div class="detalhe-passo">
+            <p>No painel da Vercel, dentro do seu projeto, vá em
+              <strong>Settings → Deployment Protection</strong> e desative
+              <strong>Vercel Authentication</strong> para <strong>Production</strong>.
+              Pode deixar ligado para Preview. Desligar não expõe nada de sensível:
+              o painel do seu app continua atrás da senha que você inventou no
+              Passo 9, e o webhook continua conferindo a assinatura de cada
+              mensagem.</p>
+          </div>
+          <div class="aviso-passo critico">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>A Vercel liga essa proteção <strong>por padrão</strong> em projetos
+              novos. Enquanto ela estiver ligada, o Meta nunca consegue alcançar o
+              seu site — toda tentativa é redirecionada para uma tela de login da
+              Vercel, e o Meta não tem como fazer esse login. O deploy vai dizer
+              "Ready" e tudo vai parecer certo, mas a tela de Logs do seu painel
+              fica eternamente vazia, sem nenhum erro visível. Sem este passo,
+              nada do resto funciona.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-11">
+        <input type="checkbox" id="passo-11-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 11 — Cole o endereço do seu app na calculadora desta página</span>
+          <div class="detalhe-passo">
+            <p>Suba até a seção <strong>"Calculadora de URLs"</strong>, no topo
+              desta página, e cole ali o endereço do seu projeto — algo como
+              <code>adeus-mensalidade-seunome.vercel.app</code>. A página mostra
+              as duas URLs que você vai usar nos próximos passos, com botão de
+              copiar.</p>
+          </div>
+          <div class="aviso-passo">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>Existem duas URLs parecidas para o seu projeto. A que aparece
+              impressa na tela logo depois do deploy tem um trecho de letras e
+              números no meio (algo como
+              <code>adeus-mensalidade-mp9f31xau-seunome.vercel.app</code>) e ela
+              <strong>muda a cada nova publicação</strong>. Use, em vez dela, a URL
+              estável do projeto — sem esse trecho — que é a que continua
+              funcionando depois do próximo deploy. A calculadora acima avisa
+              sozinha se a URL que você colou parecer instável.</p>
+          </div>
+        </span>
+      </li>
+    </ol>
+
+    <p style="margin: 24px 0 16px; font-weight: 600; color: var(--texto);">Parte 3 — Fechar o circuito no Meta</p>
+    <ol id="lista-passos-3" class="lista-passos-continuacao">
+      <li class="passo" id="passo-12">
+        <input type="checkbox" id="passo-12-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 12 — Preencha a política de privacidade e publique o app</span>
+          <div class="detalhe-passo">
+            <p>O seu app já serve uma página de política de privacidade sozinho,
+              no endereço que a calculadora do Passo 11 mostrou como "URL da
+              política de privacidade". No portal do Meta, na configuração básica
+              do app, cole essa URL no campo de política de privacidade e salve.</p>
+            <p>Depois, encontre o controle de status do app (perto do nome do app,
+              no topo do painel) e mude de "Em desenvolvimento" para
+              <strong>publicado</strong>.</p>
+          </div>
+          <div class="aviso-passo critico">
+            <span class="rotulo-aviso">Atenção</span>
+            <p>Publicar o app <strong>não é</strong> o mesmo que passar pelo App
+              Review do Meta — isso é outro processo, opcional para o workshop, e
+              não impede nada do que você vai fazer aqui. Publicar é só um botão de
+              status. Mas <strong>sem ele nenhum evento é entregue</strong>: o
+              próprio Meta avisa, na tela de configuração de webhooks, que "seu app
+              deve estar com o status de publicado para receber webhooks". Pular
+              este passo deixa tudo parecendo configurado e nada chega.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-13">
+        <input type="checkbox" id="passo-13-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 13 — Configure o webhook com a Callback URL e o Verify Token</span>
+          <div class="detalhe-passo">
+            <p>No app do Meta, vá no produto <strong>Webhooks</strong>, objeto
+              <strong>Instagram</strong>. Cole a <strong>Callback URL</strong> que a
+              calculadora do Passo 11 gerou (termina em <code>/api/webhook</code>)
+              e, no campo Verify Token, cole exatamente a mesma palavra secreta que
+              você inventou no Passo 9 para <code>VERIFY_TOKEN</code>.</p>
+            <p>Depois de salvar, <strong>assine os campos</strong>: marque
+              <code>comments</code>, <code>messages</code>,
+              <code>messaging_postbacks</code> e <code>messaging_seen</code>. Sem
+              assinar os campos, o webhook fica configurado mas nada é enviado a
+              ele.</p>
+          </div>
+        </span>
+      </li>
+    </ol>
+
+    <p style="margin: 24px 0 16px; font-weight: 600; color: var(--texto);">Parte 4 — Usar</p>
+    <ol id="lista-passos-4" class="lista-passos-continuacao">
+      <li class="passo" id="passo-14">
+        <input type="checkbox" id="passo-14-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 14 — Entre no painel e conecte a conta</span>
+          <div class="detalhe-passo">
+            <p>Abra o endereço do seu app (o mesmo que você colou na calculadora)
+              e entre com a <code>PANEL_PASSWORD</code> que você inventou no Passo
+              9. No menu do painel, clique em <strong>Configuração</strong>. Se o
+              campo de token estiver vazio, pode deixar em branco — o app já usa o
+              <code>ACCESS_TOKEN</code> que você colou no deploy — e clique em
+              <strong>"Conectar / reconectar conta"</strong>. Isso troca o token
+              curto por um de 60 dias e descobre os dados da sua conta
+              automaticamente.</p>
+            <p>Depois de conectar, confira na mesma tela se a Callback URL e o
+              Verify Token mostrados batem com o que você colou no Passo 13.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-15">
+        <input type="checkbox" id="passo-15-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 15 — Crie a primeira automação e publique</span>
+          <div class="detalhe-passo">
+            <p>No menu do painel, vá em <strong>Automações</strong>. Dê um nome,
+              escolha o gatilho <strong>Comentário</strong> e clique em
+              <strong>Criar</strong>. Abra a automação criada e preencha: a
+              palavra-chave que dispara a resposta, o texto da resposta pública no
+              comentário (opcional) e o texto da DM privada — com o pedido e o seu
+              link <strong>juntos, na mesma mensagem</strong>. Por fim, clique em
+              <strong>Publicar</strong>, não em "Salvar rascunho": rascunho fica
+              salvo, mas não dispara para ninguém.</p>
+          </div>
+        </span>
+      </li>
+      <li class="passo" id="passo-16">
+        <input type="checkbox" id="passo-16-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Passo 16 — Comente com a segunda conta e veja a DM chegar</span>
+          <div class="detalhe-passo">
+            <p>Com a <strong>segunda</strong> conta do Passo 1 — nunca com a conta
+              que está rodando a automação, o sistema ignora esses comentários de
+              propósito — comente a palavra-chave no post ou Reel escolhido. Em
+              poucos segundos deve aparecer a resposta pública (se você configurou
+              uma) e, logo depois, a DM privada.</p>
+            <p>Se nada acontecer em cerca de um minuto, abra <strong>Logs</strong>
+              no menu do painel — ele mostra exatamente o que o Meta enviou e o que
+              o sistema fez com isso. A seção "Se algo der errado", no fim desta
+              página, tem os casos mais comuns.</p>
+          </div>
+        </span>
+      </li>
+    </ol>
+  </section>
+
+  <section id="problemas">
+    <h2>Se algo der errado</h2>
+    <p>Procure pelo que você está vendo, não pela causa — a causa quase nunca é a
+      que parece. Todos os casos abaixo aconteceram de verdade durante a
+      montagem deste sistema.</p>
+
+    <details class="problema">
+      <summary>Comentei e não aconteceu nada</summary>
+      <p>Abra <strong>Logs</strong> no painel. A tela é dividida em duas partes, e
+        qual delas está vazia diz onde está o problema:</p>
+      <ul>
+        <li><strong>"Eventos recebidos" vazio</strong> — o Meta não está te
+          entregando nada. O problema é a configuração no portal, não a sua
+          automação. Confira se o app está <strong>publicado</strong> (Passo 12) e
+          se a URL do webhook foi salva com os campos assinados (Passo 13).</li>
+        <li><strong>Chegam eventos, mas nenhum disparo</strong> — o evento chegou e
+          a automação não casou. Verifique: ela está <strong>Publicada</strong> e
+          não em rascunho? A palavra-chave bate? Você comentou com a segunda
+          conta, e não com a conta que roda a automação? Essa última é a causa
+          mais comum: comentários da própria conta são ignorados de propósito.</li>
+        <li><strong>Aparece um disparo com erro</strong> — o texto do erro é a
+          resposta literal do Instagram. Procure por ele aqui nesta seção.</li>
+      </ul>
+    </details>
+
+    <details class="problema">
+      <summary>O painel diz "enviado" mas a DM não chegou</summary>
+      <p>Confira se a pessoa que comentou tem a função <strong>Testador do
+        Instagram</strong> no seu app e se aceitou o convite (Passos 5 e 6).
+        Enquanto o app não passa pela análise do Meta, só contas com essa função
+        recebem mensagem.</p>
+      <p>Se a mesma pessoa já tinha recebido essa automação antes, ela não recebe
+        de novo — é proposital, para ninguém levar a mesma DM duas vezes. Teste
+        com outra conta.</p>
+    </details>
+
+    <details class="problema">
+      <summary>Todo evento aparece com "assinatura inválida"</summary>
+      <p>Esse é o erro mais caro da lista, e tem uma causa só: o
+        <code>IG_APP_SECRET</code> que você preencheu é o do app do
+        <strong>Facebook</strong>, não o do app do <strong>Instagram</strong>.</p>
+      <p>São dois pares de credenciais diferentes no mesmo app. O par certo está
+        no bloco do topo da página <strong>Configuração da API com login do
+        Instagram</strong> — não em Configurações do app → Básico. Corrija a
+        variável nas configurações do seu projeto na Vercel e publique de novo.</p>
+      <p>O que torna isso cruel: usar o par errado não gera erro nenhum na hora de
+        configurar. O sintoma só aparece depois, em produção, e não diz a causa.</p>
+    </details>
+
+    <details class="problema">
+      <summary>O Meta recusou minha URL de callback</summary>
+      <p>Duas causas possíveis, nesta ordem de probabilidade:</p>
+      <ul>
+        <li>O <strong>Verify Token</strong> que você digitou no portal do Meta é
+          diferente do que está no seu app. Ele aparece na tela de
+          <strong>Configuração</strong> do painel — copie de lá, não da
+          memória.</li>
+        <li>A <strong>proteção de deploy da Vercel</strong> ainda está ligada
+          (Passo 10). Enquanto estiver, o Meta não consegue nem alcançar o seu
+          endereço.</li>
+      </ul>
+    </details>
+
+    <details class="problema">
+      <summary>Não consigo gerar o token</summary>
+      <p>Se a mensagem fala em conexão ou internet, veja o aviso do
+        <strong>Passo 7</strong> — o resumo é: tente pelo celular, com dados
+        móveis e Wi-Fi desligado, e <strong>não troque a sua senha do
+        Instagram</strong>.</p>
+      <p>Se a conta não aparece para gerar o token, o convite de testador não foi
+        aceito. Isso se faz pelo navegador, em
+        <code>instagram.com/accounts/manage_access/</code>, aba <strong>Convites
+        de testador</strong> — o aplicativo do celular não mostra essa tela.</p>
+    </details>
+
+    <details class="problema">
+      <summary>Não acho o Instagram no menu do app</summary>
+      <p>Ele não fica no menu lateral, e isso não significa que você criou o app
+        errado. Toda a configuração do Instagram vive dentro do caso de uso:
+        <strong>Casos de uso → Personalizar → Configuração da API com login do
+        Instagram</strong>.</p>
+    </details>
+
+    <details class="problema">
+      <summary>"Sorry, something went wrong" ao conectar o Instagram</summary>
+      <p>Você está no <code>business.facebook.com</code>. Esse caminho parece o
+        óbvio, não é necessário aqui, e costuma falhar. Faça tudo pelo
+        <code>developers.facebook.com</code>, dentro do seu app.</p>
+    </details>
+
+    <details class="problema">
+      <summary>Funciona comigo, mas não com meus seguidores</summary>
+      <p>É o esperado, e não é defeito. Enquanto o app não passa pela análise do
+        Meta, só contas com a função <strong>Testador do Instagram</strong>
+        recebem mensagem — por isso o Passo 5 pede duas contas.</p>
+      <p>Para atender qualquer seguidor, o app precisa passar pela análise do
+        Meta. É trabalho de formulário e de gravar um vídeo mostrando cada
+        permissão em uso, não de programação, e a aprovação leva de dias a
+        semanas.</p>
+    </details>
+
+    <details class="problema">
+      <summary>Funcionava e parou de funcionar</summary>
+      <p>Se você publicou o app de novo e usou a URL que aparece no fim do deploy
+        — aquela com um trecho embaralhado no meio — ela muda a cada publicação, e
+        o webhook ficou apontando para um endereço que não existe mais. Use o
+        endereço fixo do projeto, e recadastre no Passo 13.</p>
+      <p>Se não foi isso, veja em <strong>Configuração</strong> quantos dias
+        faltam para o token expirar. A renovação é automática, mas se algo a
+        impediu, basta gerar um token novo e colá-lo ali.</p>
+    </details>
+  </section>
+
+  <footer>
+    Adeus Mensalidade — material de apoio da aula.
+  </footer>
+
+</main>
+
+<script>
+  const CHAVE = 'adeus-guia-v1';
+
+  function lerEstado() {
+    try {
+      return JSON.parse(localStorage.getItem(CHAVE) ?? '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  function gravarEstado(estado) {
+    localStorage.setItem(CHAVE, JSON.stringify(estado));
+  }
+
+  function restaurar() {
+    const estado = lerEstado();
+    document.querySelectorAll('.passo input[type="checkbox"]').forEach((cx) => {
+      cx.checked = Boolean(estado[cx.id]);
+    });
+    if (estado.url) {
+      document.querySelector('#campo-url').value = estado.url;
+      calcularUrls(estado.url);
+    }
+    atualizarProgresso();
+  }
+
+  function atualizarProgresso() {
+    const todas = document.querySelectorAll('.passo input[type="checkbox"]');
+    const feitas = [...todas].filter((c) => c.checked).length;
+    document.querySelector('#progresso-texto').textContent =
+      `${feitas} de ${todas.length} passos concluídos`;
+    document.querySelector('#progresso-barra').style.width =
+      todas.length ? `${(feitas / todas.length) * 100}%` : '0%';
+    const container = document.querySelector('#progresso-container');
+    container.setAttribute('aria-valuenow', todas.length ? Math.round((feitas / todas.length) * 100) : 0);
+  }
+
+  // A URL com hash muda a cada publicação. Se a pessoa colar essa no webhook,
+  // funciona hoje e quebra no próximo deploy, sem sintoma imediato.
+  //
+  // A Vercel gera um trecho aleatório de exatamente 9 caracteres, misturando
+  // letras e números, só nas URLs de deploy. Nome de projeto raramente tem um
+  // segmento assim — checar isso distingue sem acusar a URL estável por engano,
+  // que era o defeito da versão anterior ("adeus-mensalidade-fulano" era
+  // marcada como instável porque "mensalidade" tem mais de 8 letras).
+  function pareceInstavel(host) {
+    const partes = host.replace(/\.vercel\.app$/i, '').split('-');
+    return partes.some(
+      (p) => p.length === 9 && /[0-9]/.test(p) && /[a-z]/i.test(p),
+    );
+  }
+
+  function normalizar(entrada) {
+    const limpa = entrada.trim().replace(/\/+$/, '');
+    if (!limpa) return null;
+    const comProtocolo = /^https?:\/\//i.test(limpa) ? limpa : `https://${limpa}`;
+    try {
+      return new URL(comProtocolo);
+    } catch {
+      return null;
+    }
+  }
+
+  function calcularUrls(entrada) {
+    const url = normalizar(entrada);
+    const saida = document.querySelector('#urls-calculadas');
+    const aviso = document.querySelector('#aviso-url');
+
+    if (!url) {
+      saida.hidden = true;
+      aviso.hidden = true;
+      return;
+    }
+
+    const base = `${url.protocol}//${url.host}`;
+    document.querySelector('#url-webhook').textContent = `${base}/api/webhook`;
+    document.querySelector('#url-privacidade').textContent = `${base}/privacidade`;
+    saida.hidden = false;
+    aviso.hidden = !pareceInstavel(url.host);
+  }
+
+  async function copiar(botao, texto) {
+    await navigator.clipboard.writeText(texto);
+    const original = botao.textContent;
+    botao.textContent = 'Copiado!';
+    setTimeout(() => { botao.textContent = original; }, 1500);
+  }
+
+  // Ligações de evento
+
+  document.querySelectorAll('.passo input[type="checkbox"]').forEach((cx) => {
+    cx.addEventListener('change', () => {
+      const estado = lerEstado();
+      estado[cx.id] = cx.checked;
+      gravarEstado(estado);
+      atualizarProgresso();
+    });
+  });
+
+  const campoUrl = document.querySelector('#campo-url');
+  campoUrl.addEventListener('input', () => {
+    const estado = lerEstado();
+    estado.url = campoUrl.value;
+    gravarEstado(estado);
+    calcularUrls(campoUrl.value);
+  });
+
+  document.querySelector('#copiar-webhook').addEventListener('click', (evento) => {
+    copiar(evento.currentTarget, document.querySelector('#url-webhook').textContent);
+  });
+
+  document.querySelector('#copiar-privacidade').addEventListener('click', (evento) => {
+    copiar(evento.currentTarget, document.querySelector('#url-privacidade').textContent);
+  });
+
+  document.querySelector('#btn-recomecar').addEventListener('click', () => {
+    const confirmado = confirm('Isso apaga todo o progresso salvo neste navegador, incluindo a URL preenchida. Continuar?');
+    if (!confirmado) return;
+    localStorage.removeItem(CHAVE);
+    document.querySelectorAll('.passo input[type="checkbox"]').forEach((cx) => {
+      cx.checked = false;
+    });
+    campoUrl.value = '';
+    document.querySelector('#urls-calculadas').hidden = true;
+    document.querySelector('#aviso-url').hidden = true;
+    atualizarProgresso();
+  });
+
+  restaurar();
+</script>
+</body>
+</html>
