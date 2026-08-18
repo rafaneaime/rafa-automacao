@@ -386,37 +386,86 @@
     </div>
   </section>
 
-  <section id="secao-url" aria-label="Calculadora de URLs">
-    <h2>Calculadora de URLs</h2>
-    <p>Depois de publicar o app, cole o endereço dele aqui. A página monta as duas
-      URLs que você vai colar no Meta.</p>
-    <input
-      type="text"
-      id="campo-url"
-      inputmode="url"
-      autocomplete="off"
-      autocapitalize="off"
-      spellcheck="false"
-      placeholder="meu-app.vercel.app"
-    >
-    <div id="urls-calculadas" hidden>
-      <div class="linha-url">
-        <span class="rotulo">Callback URL do webhook</span>
-        <code id="url-webhook"></code>
-        <button type="button" class="copiar" id="copiar-webhook">Copiar</button>
-      </div>
-      <div class="linha-url">
-        <span class="rotulo">URL da política de privacidade</span>
-        <code id="url-privacidade"></code>
-        <button type="button" class="copiar" id="copiar-privacidade">Copiar</button>
-      </div>
-    </div>
-    <div id="aviso-url" hidden>
-      Essa URL tem um trecho de letras e números que muda a cada nova publicação
-      (deploy). Se você usar essa aqui no webhook do Meta, funciona hoje e para de
-      funcionar silenciosamente na próxima vez que publicar. Use a URL estável do
-      seu projeto, não a que aparece impressa depois do deploy.
-    </div>
+
+  <section id="secao-contas" aria-label="Antes de começar: as contas">
+    <h2>Antes de começar: crie as contas</h2>
+    <p>São três cadastros, todos gratuitos, e você faz uma vez só. Não precisa
+      colocar cartão em nenhum deles. Se já tiver alguma, é só marcar e seguir.</p>
+
+    <ol id="lista-contas" class="lista-passos-continuacao">
+      <li class="passo" id="passo-conta-github">
+        <input type="checkbox" id="passo-conta-github-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Conta no GitHub</span>
+          <div class="detalhe-passo">
+            <p>É onde o código do seu sistema vai ficar guardado. Você não precisa
+              entender de programação nem abrir o site depois — ele só precisa
+              existir para a publicação funcionar.</p>
+            <p>Cadastre-se em <a href="https://github.com/signup" target="_blank"
+              rel="noopener">github.com/signup</a>. Ele pede e-mail, senha, um nome
+              de usuário e o país. Se preferir, dá para entrar direto com Google ou
+              Apple, nos botões do topo — é mais rápido.</p>
+            <p>Confirme o e-mail no fim. Sem essa confirmação a conta fica
+              incompleta e a publicação falha mais adiante, sem dizer o porquê.</p>
+          </div>
+        </span>
+      </li>
+
+      <li class="passo" id="passo-conta-vercel">
+        <input type="checkbox" id="passo-conta-vercel-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Conta na Vercel</span>
+          <div class="detalhe-passo">
+            <p>É quem coloca o seu sistema no ar, de graça, e te dá o endereço na
+              internet.</p>
+            <p>Entre em <a href="https://vercel.com/signup" target="_blank"
+              rel="noopener">vercel.com/signup</a> e escolha
+              <strong>Continue with GitHub</strong> — assim as duas contas já
+              ficam ligadas, que é o que a publicação precisa. Quando perguntar o
+              tipo de uso, escolha a opção pessoal (<em>Hobby</em>).</p>
+          </div>
+          <div class="aviso-passo">
+            <span class="rotulo-aviso">Faça nesta ordem</span>
+            <p>Crie a do GitHub primeiro. Entrar na Vercel com o GitHub economiza
+              um passo e evita o erro mais comum aqui: acabar com duas contas
+              separadas que não se enxergam.</p>
+          </div>
+        </span>
+      </li>
+
+      <li class="passo" id="passo-conta-meta">
+        <input type="checkbox" id="passo-conta-meta-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">Conta no Meta for Developers</span>
+          <div class="detalhe-passo">
+            <p>É o portal onde o Instagram libera o acesso da sua automação. É
+              aqui que dá mais trabalho, e é por isso que os passos 1 a 8 deste
+              guia são quase todos sobre ele.</p>
+            <p>Entre em <a href="https://developers.facebook.com" target="_blank"
+              rel="noopener">developers.facebook.com</a> e clique em
+              <strong>Começar</strong>, no topo à direita. Ele usa a sua conta do
+              Facebook — se você já tem uma, é só entrar com ela e aceitar os
+              termos de desenvolvedor.</p>
+          </div>
+        </span>
+      </li>
+
+      <li class="passo" id="passo-conta-banco">
+        <input type="checkbox" id="passo-conta-banco-check">
+        <span class="texto-passo">
+          <span class="titulo-passo">O banco de dados: nada a fazer agora</span>
+          <div class="detalhe-passo">
+            <p>Seu sistema precisa de um banco de dados para guardar os contatos e
+              os disparos. Ele é criado <strong>durante a publicação</strong>, no
+              passo 9, sem você precisar configurar nada.</p>
+            <p>Se em algum momento daquele passo aparecer uma tela pedindo para
+              criar ou autorizar uma conta no <strong>Neon</strong>, é isso: aceite
+              e siga. Faz parte do fluxo, é gratuito, e você não precisa voltar lá
+              depois. Marque esta caixa e continue.</p>
+          </div>
+        </span>
+      </li>
+    </ol>
   </section>
 
   <section id="secao-passos" aria-label="Passo a passo">
@@ -683,11 +732,37 @@
         <span class="texto-passo">
           <span class="titulo-passo">Passo 11 — Cole o endereço do seu app na calculadora desta página</span>
           <div class="detalhe-passo">
-            <p>Suba até a seção <strong>"Calculadora de URLs"</strong>, no topo
-              desta página, e cole ali o endereço do seu projeto — algo como
-              <code>adeus-mensalidade-seunome.vercel.app</code>. A página mostra
-              as duas URLs que você vai usar nos próximos passos, com botão de
-              copiar.</p>
+            <p>Cole abaixo o endereço do seu projeto — algo como
+              <code>adeus-mensalidade-seunome.vercel.app</code>. A página monta
+              sozinha as duas URLs que você vai usar nos próximos passos, cada
+              uma com botão de copiar.</p>
+    <input
+    type="text"
+    id="campo-url"
+    inputmode="url"
+    autocomplete="off"
+    autocapitalize="off"
+    spellcheck="false"
+    placeholder="meu-app.vercel.app"
+    >
+    <div id="urls-calculadas" hidden>
+    <div class="linha-url">
+    <span class="rotulo">Callback URL do webhook</span>
+    <code id="url-webhook"></code>
+    <button type="button" class="copiar" id="copiar-webhook">Copiar</button>
+    </div>
+    <div class="linha-url">
+    <span class="rotulo">URL da política de privacidade</span>
+    <code id="url-privacidade"></code>
+    <button type="button" class="copiar" id="copiar-privacidade">Copiar</button>
+    </div>
+    </div>
+    <div id="aviso-url" hidden>
+    Essa URL tem um trecho de letras e números que muda a cada nova publicação
+    (deploy). Se você usar essa aqui no webhook do Meta, funciona hoje e para de
+    funcionar silenciosamente na próxima vez que publicar. Use a URL estável do
+    seu projeto, não a que aparece impressa depois do deploy.
+    </div>
           </div>
           <div class="aviso-passo">
             <span class="rotulo-aviso">Atenção</span>
@@ -697,7 +772,7 @@
               <code>adeus-mensalidade-mp9f31xau-seunome.vercel.app</code>) e ela
               <strong>muda a cada nova publicação</strong>. Use, em vez dela, a URL
               estável do projeto — sem esse trecho — que é a que continua
-              funcionando depois do próximo deploy. A calculadora acima avisa
+              funcionando depois do próximo deploy. A calculadora aqui do passo avisa
               sozinha se a URL que você colou parecer instável.</p>
           </div>
         </span>
