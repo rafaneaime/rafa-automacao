@@ -47,12 +47,16 @@ O formulário da Vercel vai pedir estas 5 variáveis. É aqui que cada uma vem:
 | `VERIFY_TOKEN` | Uma string secreta que você mesmo inventa; o mesmo valor entra depois no portal do Meta. |
 | `PANEL_PASSWORD` | Uma senha que você mesmo inventa, para entrar no seu próprio painel. |
 
-## O passo a passo está na página-guia
+## Comece pela página-guia
 
-Este README não repete o passo a passo — ele é só a porta de entrada. O
-caminho completo, com cada tela e cada clique, fica numa página-guia própria,
-linkada a partir da página deste repositório. Comece por ela: é o que leva
-você do zero até a primeira DM automática.
+**→ [adeus-guia.vercel.app](https://adeus-guia.vercel.app)**
+
+Este README não repete o passo a passo — ele é só a porta de entrada. O caminho
+completo, com cada tela e cada clique, está na página-guia: dezesseis passos com
+caixinhas para você ir marcando, o progresso salvo no seu navegador, e os avisos
+das armadilhas aparecendo dentro do passo em que cada uma ataca.
+
+Comece por ela. É o que leva você do zero até a primeira DM automática.
 
 ## A verdade sobre o modo de testes
 
