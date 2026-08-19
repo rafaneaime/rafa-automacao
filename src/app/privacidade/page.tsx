@@ -1,17 +1,20 @@
+import { env } from '@/lib/env';
 export const runtime = 'nodejs';
 
 export default function PrivacidadePage() {
+  const email = env.emailContato();
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 text-neutral-800">
-      <div className="mb-8 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-        <strong>Aviso para quem operar esta instalação:</strong> revise todo o
-        texto abaixo antes de publicar o app no Meta. Em especial, troque o
-        e-mail de contato marcado como{' '}
-        <code className="rounded bg-amber-100 px-1 py-0.5">
-          [SUBSTITUA PELO SEU E-MAIL]
-        </code>{' '}
-        pelo endereço que você realmente vai monitorar.
-      </div>
+      {!email && (
+        <div className="mb-8 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <strong>Falta configurar o e-mail de contato.</strong> Defina a
+          variável <code className="rounded bg-amber-100 px-1 py-0.5">EMAIL_CONTATO</code>{' '}
+          nas configurações do seu projeto na Vercel e publique de novo. Sem
+          isso, quem quiser pedir a remoção dos próprios dados não tem como
+          falar com você — e o Meta pode recusar a política.
+        </div>
+      )}
 
       <h1 className="mb-2 text-2xl font-semibold">Política de Privacidade</h1>
       <p className="mb-8 text-sm text-neutral-500">
@@ -136,7 +139,7 @@ export default function PrivacidadePage() {
         <p className="text-sm leading-relaxed text-neutral-700">
           Para dúvidas sobre esta política ou para solicitar a remoção dos
           seus dados, entre em contato com o operador desta instalação em:{' '}
-          <strong>[SUBSTITUA PELO SEU E-MAIL]</strong>.
+          <strong>{email || '(e-mail de contato ainda não configurado)'}</strong>.
         </p>
       </section>
     </main>

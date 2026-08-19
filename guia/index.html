@@ -680,13 +680,13 @@
             <p>Este botão cria a sua própria cópia do projeto, na sua conta — não
               na conta de quem fez este guia.</p>
             <p>
-              <a class="botao-deploy" href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao&project-name=adeus-mensalidade&repository-name=adeus-mensalidade&env=IG_APP_ID%2CIG_APP_SECRET%2CVERIFY_TOKEN%2CACCESS_TOKEN%2CPANEL_PASSWORD&envDescription=As+5+credenciais+do+app+do+Instagram+e+a+senha+do+seu+painel.+Veja+onde+encontrar+cada+uma+na+se%C3%A7%C3%A3o+Antes+de+clicar%2C+no+README.&envLink=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao%23antes-de-clicar&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D" target="_blank" rel="noopener">Publicar agora na Vercel</a>
+              <a class="botao-deploy" href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao&project-name=adeus-mensalidade&repository-name=adeus-mensalidade&env=IG_APP_ID%2CIG_APP_SECRET%2CVERIFY_TOKEN%2CACCESS_TOKEN%2CPANEL_PASSWORD%2CEMAIL_CONTATO&envDescription=As+credenciais+do+app+do+Instagram+e+a+senha+do+seu+painel.+Veja+onde+encontrar+cada+uma+na+se%C3%A7%C3%A3o+Antes+de+clicar%2C+no+README.&envLink=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao%23antes-de-clicar&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D" target="_blank" rel="noopener">Publicar agora na Vercel</a>
             </p>
             <p>Ele pede para você entrar (ou criar conta) na Vercel, de preferência
               direto com o seu GitHub, e conectar um repositório — deixe o botão
               criar o dele automaticamente. Ele também já conecta o banco de dados
               (Neon) sozinho, sem você precisar configurar nada nele.</p>
-            <p>Depois vem um formulário com cinco campos. É aqui que cada valor
+            <p>Depois vem um formulário com seis campos. É aqui que cada valor
               vem:</p>
             <ul>
               <li><code>IG_APP_ID</code> e <code>IG_APP_SECRET</code> — os dois
@@ -697,8 +697,13 @@
                 esse mesmo valor de novo no Passo 13.</li>
               <li><code>PANEL_PASSWORD</code> — outra senha que você mesmo inventa,
                 para entrar no painel do seu próprio app mais tarde, no Passo 14.</li>
+              <li><code>EMAIL_CONTATO</code> — um e-mail seu, que você
+                realmente acompanhe. Ele aparece na política de privacidade do
+                seu app, para quem quiser pedir a remoção dos próprios dados. O
+                Meta exige essa política no Passo 12, então preencha aqui e
+                pronto — você não vai precisar mexer em código depois.</li>
             </ul>
-            <p>Preencha os cinco e conclua o deploy. Leva alguns minutos.</p>
+            <p>Preencha os seis e conclua o deploy. Leva alguns minutos.</p>
           </div>
         </span>
       </li>

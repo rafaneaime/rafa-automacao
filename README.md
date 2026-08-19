@@ -8,7 +8,7 @@ Você configura tudo depois, por um painel, sem escrever código.
 
 ## Publicar agora
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao&project-name=adeus-mensalidade&repository-name=adeus-mensalidade&env=IG_APP_ID%2CIG_APP_SECRET%2CVERIFY_TOKEN%2CACCESS_TOKEN%2CPANEL_PASSWORD&envDescription=As+5+credenciais+do+app+do+Instagram+e+a+senha+do+seu+painel.+Veja+onde+encontrar+cada+uma+na+se%C3%A7%C3%A3o+Antes+de+clicar%2C+no+README.&envLink=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao%23antes-de-clicar&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao&project-name=adeus-mensalidade&repository-name=adeus-mensalidade&env=IG_APP_ID%2CIG_APP_SECRET%2CVERIFY_TOKEN%2CACCESS_TOKEN%2CPANEL_PASSWORD%2CEMAIL_CONTATO&envDescription=As+credenciais+do+app+do+Instagram+e+a+senha+do+seu+painel.+Veja+onde+encontrar+cada+uma+na+se%C3%A7%C3%A3o+Antes+de+clicar%2C+no+README.&envLink=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao%23antes-de-clicar&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D)
 
 Clicar cria a sua própria cópia do projeto, hospedada na sua conta — não na
 minha. Antes de clicar, leia os pré-requisitos abaixo: leva dois minutos e
@@ -38,7 +38,7 @@ usa.
   não entrar em loop de mensagens. Sem uma segunda conta para comentar, você
   não tem como testar se está funcionando.
 
-O formulário da Vercel vai pedir estas 5 variáveis. É aqui que cada uma vem:
+O formulário da Vercel vai pedir estas variáveis. É aqui que cada uma vem:
 
 | Variável | Onde encontrar |
 |---|---|
@@ -46,6 +46,7 @@ O formulário da Vercel vai pedir estas 5 variáveis. É aqui que cada uma vem:
 | `ACCESS_TOKEN` | O token gerado no passo 2 dessa mesma página. |
 | `VERIFY_TOKEN` | Uma string secreta que você mesmo inventa; o mesmo valor entra depois no portal do Meta. |
 | `PANEL_PASSWORD` | Uma senha que você mesmo inventa, para entrar no seu próprio painel. |
+| `EMAIL_CONTATO` | Um e-mail seu, que você realmente acompanhe. Ele aparece na política de privacidade do seu app, para quem quiser pedir a remoção dos próprios dados — e o Meta exige essa política para deixar você publicar. |
 
 ## Comece pela página-guia
 

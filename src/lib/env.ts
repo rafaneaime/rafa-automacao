@@ -15,4 +15,8 @@ export const env = {
   accessToken: () => process.env.ACCESS_TOKEN ?? '',
   databaseUrl: () => required('DATABASE_URL'),
   panelPassword: () => required('PANEL_PASSWORD'),
+  // Opcional de propósito: se faltar, a página de privacidade avisa em vez de
+  // quebrar. Quem instala pelo botão de deploy preenche no formulário, sem
+  // precisar editar código.
+  emailContato: () => (process.env.EMAIL_CONTATO ?? '').trim(),
 };
