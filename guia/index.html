@@ -705,25 +705,43 @@
       <li class="passo" id="passo-10">
         <input type="checkbox" id="passo-10-check">
         <span class="texto-passo">
-          <span class="titulo-passo">Passo 10 — Desligue a Vercel Authentication</span>
+          <span class="titulo-passo">Passo 10 — Confira se o seu site abre para quem está de fora</span>
           <div class="detalhe-passo">
-            <p>No painel da Vercel, dentro do seu projeto, vá em
-              <strong>Settings → Deployment Protection</strong> e desative
-              <strong>Vercel Authentication</strong> para <strong>Production</strong>.
-              Pode deixar ligado para Preview. Desligar não expõe nada de sensível:
-              o painel do seu app continua atrás da senha que você inventou no
-              Passo 9, e o webhook continua conferindo a assinatura de cada
-              mensagem.</p>
+            <p>Seu projeto tem dois endereços parecidos, e só um deles serve. Use o
+              <strong>curto</strong>, no formato <code>nome-do-projeto.vercel.app</code>
+              — ele aparece no topo da página do projeto na Vercel. O outro, mais
+              comprido e com um trecho embaralhado no meio, não serve.</p>
+            <p>Abra <code>seu-endereco.vercel.app/privacidade</code> numa
+              <strong>janela anônima</strong> do navegador. Anônima é importante: em
+              janela normal você está logado na Vercel e veria a página mesmo se ela
+              estivesse fechada para o resto do mundo.</p>
+            <ul>
+              <li><strong>Se a política de privacidade aparecer</strong> — está tudo
+                certo. Marque e siga para o passo 11.</li>
+              <li><strong>Se cair numa tela de login da Vercel</strong> — seu site
+                está fechado, e o Instagram também não vai conseguir entrar. Resolva
+                como está descrito no aviso abaixo.</li>
+            </ul>
+          </div>
+          <div class="aviso-passo">
+            <span class="rotulo-aviso">Só se caiu na tela de login</span>
+            <p>Na Vercel, dentro do seu projeto, vá em <strong>Settings →
+              Deployment Protection</strong> e desligue a chave
+              <strong>Vercel Authentication</strong>. Salve e teste de novo na
+              janela anônima.</p>
+            <p>Desligar não expõe nada: o painel do seu app continua atrás da senha
+              que você escolheu, e o webhook continua conferindo a assinatura de
+              cada mensagem que chega.</p>
           </div>
           <div class="aviso-passo critico">
-            <span class="rotulo-aviso">Atenção</span>
-            <p>A Vercel liga essa proteção <strong>por padrão</strong> em projetos
-              novos. Enquanto ela estiver ligada, o Meta nunca consegue alcançar o
-              seu site — toda tentativa é redirecionada para uma tela de login da
-              Vercel, e o Meta não tem como fazer esse login. O deploy vai dizer
-              "Ready" e tudo vai parecer certo, mas a tela de Logs do seu painel
-              fica eternamente vazia, sem nenhum erro visível. Sem este passo,
-              nada do resto funciona.</p>
+            <span class="rotulo-aviso">Por que este passo existe</span>
+            <p>Se o seu site estiver fechado, o Instagram nunca consegue alcançá-lo
+              — toda tentativa dele vai parar numa tela de login que ele não tem
+              como preencher. E o pior: <strong>nada indica isso</strong>. A
+              publicação diz "Ready", o Meta aceita o cadastro do webhook, e a tela
+              de Logs do seu painel fica eternamente vazia, sem erro nenhum. É por
+              isso que vale um minuto conferindo agora, em vez de horas procurando
+              depois.</p>
           </div>
         </span>
       </li>
