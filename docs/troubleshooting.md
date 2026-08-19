@@ -1,4 +1,4 @@
-# Base de problemas — MEUCHAT
+# Base de problemas — Adeus Mensalidade
 
 Registro de tudo que deu errado durante a montagem real, para consulta durante o
 workshop. Organizado por **sintoma**, porque é assim que a pessoa descreve o

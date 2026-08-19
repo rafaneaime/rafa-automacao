@@ -1,6 +1,6 @@
-# MEUCHAT
+# Adeus Mensalidade
 
-MEUCHAT é uma automação de comentário para DM no Instagram: quem
+Adeus Mensalidade é uma automação de comentário para DM no Instagram: quem
 comenta uma palavra-chave no seu post recebe uma resposta pública na hora e,
 em seguida, uma mensagem privada com o seu link. Ela roda de graça, na sua
 própria conta da Vercel e do Neon — não numa plataforma paga de terceiros.
