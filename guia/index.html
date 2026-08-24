@@ -498,9 +498,11 @@
         <span class="texto-passo">
           <span class="titulo-passo">Passo 2 — Crie o app no Meta for Developers</span>
           <div class="detalhe-passo">
-            <p>Entre em <code>developers.facebook.com</code> com o seu login do
-              Instagram ou Facebook. Vá em <strong>Meus apps → Criar
-              aplicativo</strong>. Quando pedir o caso de uso, escolha
+            <p>Abra <a href="https://developers.facebook.com/apps/" target="_blank"
+              rel="noopener">developers.facebook.com/apps</a> — é a sua lista de
+              apps, e ele pede o login do Facebook se você ainda não estiver
+              conectado. Clique em <strong>Criar aplicativo</strong>.
+              Quando pedir o caso de uso, escolha
               <strong>Gerenciar mensagens e conteúdo no Instagram</strong> — não é
               Messenger, não é WhatsApp. Dê um nome ao app e crie.</p>
           </div>
@@ -583,7 +585,9 @@
               na tela avisa isso. Enquanto o convite não for aceito, a conta não
               aparece para gerar o token no Passo 7. Faça isso duas vezes, uma vez
               logado em cada conta:</p>
-            <p>Abra, no navegador: <code>https://www.instagram.com/accounts/manage_access/</code>.
+            <p>Abra, no navegador:
+              <a href="https://www.instagram.com/accounts/manage_access/"
+              target="_blank" rel="noopener">instagram.com/accounts/manage_access</a>.
               Vá na aba <strong>Convites de testador</strong> e aceite.</p>
           </div>
           <div class="aviso-passo">
@@ -601,9 +605,14 @@
         <span class="texto-passo">
           <span class="titulo-passo">Passo 7 — Gere o token de acesso</span>
           <div class="detalhe-passo">
-            <p>De volta à página de Configuração da API com login do Instagram,
-              segundo bloco da página, <strong>Gerar tokens de acesso → Adicionar
-              conta</strong>. Faça login com uma das contas do Passo 1 e autorize.
+            <p><strong>Volte para a página de Configuração da API com login do
+              Instagram.</strong> Você saiu dela nos dois passos anteriores, e ela
+              não fica no menu lateral — para voltar, é o mesmo caminho do Passo 3:
+              dentro do seu app, <strong>Casos de uso → Personalizar</strong> e,
+              na barra lateral que abre,
+              <strong>Configuração da API com login do Instagram</strong>.</p>
+            <p>Lá, no segundo bloco da página, <strong>Gerar tokens de acesso →
+              Adicionar conta</strong>. Faça login com uma das contas do Passo 1 e autorize.
               Depois clique para gerar o token e <strong>copie na hora</strong>: ele
               some da tela e expira em cerca de 1 hora (o painel do seu app troca
               por um de 60 dias automaticamente, mais adiante).</p>
@@ -679,11 +688,21 @@
           <div class="detalhe-passo">
             <p>Este botão cria a sua própria cópia do projeto, na sua conta — não
               na conta de quem fez este guia.</p>
+            <p><strong>Antes de clicar, entre nas duas contas neste mesmo
+              navegador:</strong>
+              <a href="https://github.com/login" target="_blank" rel="noopener">GitHub</a>
+              e
+              <a href="https://vercel.com/login" target="_blank" rel="noopener">Vercel</a>
+              — as que você criou lá em cima, em "Antes de começar". Faça isso
+              agora, em outra aba, e volte aqui. Clicar no botão deslogado joga
+              você numa sequência de telas de login e cadastro no meio do
+              processo, e é fácil sair dela em outro lugar que não a página de
+              publicação.</p>
             <p>
               <a class="botao-deploy" href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao&project-name=adeus-mensalidade&repository-name=adeus-mensalidade&env=IG_APP_ID%2CIG_APP_SECRET%2CVERIFY_TOKEN%2CACCESS_TOKEN%2CPANEL_PASSWORD%2CEMAIL_CONTATO&envDescription=As+credenciais+do+app+do+Instagram+e+a+senha+do+seu+painel.+Veja+onde+encontrar+cada+uma+na+se%C3%A7%C3%A3o+Antes+de+clicar%2C+no+README.&envLink=https%3A%2F%2Fgithub.com%2Frafaneaime%2Frafa-automacao%23antes-de-clicar&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%5D" target="_blank" rel="noopener">Publicar agora na Vercel</a>
             </p>
-            <p>Ele pede para você entrar (ou criar conta) na Vercel, de preferência
-              direto com o seu GitHub, e conectar um repositório — deixe o botão
+            <p>Com as duas contas já conectadas, ele vai direto para a tela de
+              publicação. Ele pede para conectar um repositório — deixe o botão
               criar o dele automaticamente. Ele também já conecta o banco de dados
               (Neon) sozinho, sem você precisar configurar nada nele.</p>
             <p>Depois vem um formulário com seis campos. É aqui que cada valor
@@ -894,6 +913,10 @@
               link <strong>juntos, na mesma mensagem</strong>. Por fim, clique em
               <strong>Publicar</strong>, não em "Salvar rascunho": rascunho fica
               salvo, mas não dispara para ninguém.</p>
+            <p>Deu certo quando três coisas mudam na tela: aparece um aviso verde
+              de confirmação no topo, a etiqueta ao lado do nome vira
+              <strong>Publicada</strong>, e o próprio botão fica verde escrito
+              "Publicar de novo". Se nada disso mudou, ela não foi publicada.</p>
           </div>
         </span>
       </li>
@@ -988,8 +1011,10 @@
         Instagram</strong>.</p>
       <p>Se a conta não aparece para gerar o token, o convite de testador não foi
         aceito. Isso se faz pelo navegador, em
-        <code>instagram.com/accounts/manage_access/</code>, aba <strong>Convites
-        de testador</strong> — o aplicativo do celular não mostra essa tela.</p>
+        <a href="https://www.instagram.com/accounts/manage_access/" target="_blank"
+        rel="noopener">instagram.com/accounts/manage_access</a>, aba
+        <strong>Convites de testador</strong> — o aplicativo do celular não
+        mostra essa tela.</p>
     </details>
 
     <details class="problema">

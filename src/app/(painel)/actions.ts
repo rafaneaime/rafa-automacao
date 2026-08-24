@@ -97,6 +97,11 @@ export async function salvarAutomacao(formData: FormData) {
   revalidatePath(`/automacoes/${id}`);
 
   if (publicarSemDm) redirect(`/automacoes/${id}?erro=dm-vazia`);
+
+  // Sem este redirect a página volta idêntica: quem republica uma automação já
+  // publicada não vê nada mudar na tela e conclui que o clique não funcionou.
+  // O parâmetro é o que faz aparecer a confirmação no topo do editor.
+  redirect(`/automacoes/${id}?ok=${publicar ? 'publicada' : 'rascunho'}`);
 }
 
 export async function excluirAutomacao(formData: FormData) {

@@ -4,6 +4,7 @@ import { getAutomation } from '@/lib/repo/automations';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { listMedia, type Media } from '@/lib/meta/media';
 import { salvarAutomacao, excluirAutomacao } from '../../actions';
+import { BotoesSalvar } from './botoes-salvar';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,10 +17,10 @@ export default async function EditorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; ok?: string }>;
 }) {
   const { id } = await params;
-  const { erro } = await searchParams;
+  const { erro, ok } = await searchParams;
   const automacao = await getAutomation(Number(id));
   if (!automacao) notFound();
 
@@ -48,10 +49,37 @@ export default async function EditorPage({
         ← Automações
       </Link>
 
+      <div className="mt-2 flex items-center gap-3">
+        <h1 className="text-xl font-semibold">{automacao.name}</h1>
+        <span
+          className={`rounded-full px-2 py-1 text-xs ${
+            automacao.status === 'published'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-neutral-100 text-neutral-600'
+          }`}
+        >
+          {automacao.status === 'published' ? 'Publicada' : 'Rascunho'}
+        </span>
+      </div>
+
       {erro === 'dm-vazia' && (
         <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           Não publiquei: a DM privada está vazia. Sem texto ali, ninguém recebe
           nada. Salvei como rascunho — preencha a DM e publique de novo.
+        </p>
+      )}
+
+      {ok === 'publicada' && (
+        <p className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          Publicada. A partir de agora ela dispara sozinha, a cada comentário que
+          casar com as palavras-chave.
+        </p>
+      )}
+
+      {ok === 'rascunho' && (
+        <p className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+          Rascunho salvo. Ela ainda <strong>não</strong> dispara — clique em
+          Publicar quando estiver pronta.
         </p>
       )}
 
@@ -202,21 +230,8 @@ export default async function EditorPage({
           </label>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            name="acao"
-            value="rascunho"
-            className="rounded-md border border-neutral-300 px-4 py-2 text-sm"
-          >
-            Salvar rascunho
-          </button>
-          <button
-            name="acao"
-            value="publicar"
-            className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white"
-          >
-            Publicar
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <BotoesSalvar publicada={automacao.status === 'published'} />
           <span className="text-sm text-neutral-500">
             {automacao.status === 'published'
               ? 'Publicada — disparando agora'
