@@ -1,5 +1,5 @@
 export type PassoParaValidar = {
-  kind: 'public_reply' | 'dm';
+  kind: 'public_reply' | 'dm' | 'follow_up';
   variants: string[];
 };
 

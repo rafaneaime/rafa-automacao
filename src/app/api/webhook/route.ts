@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
   let configError: string | null = null;
   try {
     appSecret = env.igAppSecret();
-  } catch {
+  } catch (error) {
+    console.error('webhook: IG_APP_SECRET não configurado', error);
     configError = 'configuração ausente: IG_APP_SECRET não está definido';
   }
 

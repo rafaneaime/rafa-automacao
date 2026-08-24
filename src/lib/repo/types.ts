@@ -12,7 +12,7 @@ export type Account = {
 export type AutomationStep = {
   id: number;
   position: number;
-  kind: 'public_reply' | 'dm';
+  kind: 'public_reply' | 'dm' | 'follow_up';
   variants: string[];
   buttons: Button[];
 };

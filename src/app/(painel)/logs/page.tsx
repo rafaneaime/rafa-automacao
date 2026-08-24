@@ -34,8 +34,10 @@ export default async function LogsPage() {
 
         {disparos.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            Nenhum disparo ainda. Rode <code>npm run simulate:comment</code> para
-            testar sem precisar comentar no Instagram.
+            Nenhum disparo ainda. Comente a palavra-chave no seu post ou Reel
+            usando a <strong>segunda</strong> conta do Instagram — a que você
+            cadastrou como Testador do Instagram — e não a conta que roda a
+            automação: comentários dela são ignorados de propósito.
           </p>
         ) : (
           <ul className="divide-y divide-neutral-100 border-y border-neutral-200">

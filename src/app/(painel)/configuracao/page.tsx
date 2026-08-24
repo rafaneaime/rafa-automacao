@@ -35,7 +35,7 @@ export default async function ConfiguracaoPage() {
               <strong>{account.username ? `@${account.username}` : account.igUserId}</strong>
             </p>
             <label className="mt-3 block text-neutral-500">
-              IG_USER_ID (use no .env para o simulador)
+              Identificador desta conta no Instagram
               <code className={VALOR}>{account.igUserId}</code>
             </label>
             <p className="mt-3 text-neutral-500">
@@ -45,8 +45,9 @@ export default async function ConfiguracaoPage() {
           </div>
         ) : (
           <p className="text-sm text-neutral-600">
-            Nenhuma conta conectada. Preencha ACCESS_TOKEN no .env e clique em
-            conectar — o token curto será trocado por um de 60 dias.
+            Nenhuma conta conectada. Cole o token gerado no portal do Meta no
+            campo abaixo e clique em conectar — o token curto será trocado por
+            um de 60 dias.
           </p>
         )}
         <ConectarBotao />

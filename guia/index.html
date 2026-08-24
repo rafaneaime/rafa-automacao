@@ -873,6 +873,11 @@
               automaticamente.</p>
             <p>Depois de conectar, confira na mesma tela se a Callback URL e o
               Verify Token mostrados batem com o que você colou no Passo 13.</p>
+            <p>Se conectar falhar, a causa mais provável é o token do Passo 7 ter
+              expirado — ele dura pouco, e entre gerar e usar aqui passam vários
+              passos do portal do Meta. Gere um token novo voltando ao Passo 7 e
+              cole no campo de token desta tela. Não precisa fazer deploy de
+              novo.</p>
           </div>
         </span>
       </li>
@@ -1011,6 +1016,19 @@
         Meta. É trabalho de formulário e de gravar um vídeo mostrando cada
         permissão em uso, não de programação, e a aprovação leva de dias a
         semanas.</p>
+    </details>
+
+    <details class="problema">
+      <summary>Não consegui conectar a conta</summary>
+      <p>O texto de erro que aparece embaixo do botão "Conectar / reconectar
+        conta" vem direto do Meta, sem tradução — costuma ser cheio de termos
+        técnicos e não diz muito. Não perca tempo tentando decifrar a mensagem
+        exata.</p>
+      <p>Na quase totalidade dos casos a causa é o token do Passo 7 ter
+        expirado — ele tem vida curta, e entre gerá-lo e chegar ao Passo 14 vão
+        vários passos pelo portal do Meta. A solução é gerar um token novo no
+        Passo 7 e colar no campo de token da tela de Configuração. Não precisa
+        fazer deploy de novo.</p>
     </details>
 
     <details class="problema">

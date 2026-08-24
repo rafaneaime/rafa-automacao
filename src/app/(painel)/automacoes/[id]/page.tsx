@@ -38,6 +38,9 @@ export default async function EditorPage({
   const publica = automacao.steps.find((s) => s.kind === 'public_reply');
   const dm = automacao.steps.find((s) => s.kind === 'dm');
   const botao = dm?.buttons[0];
+  const followUps = automacao.steps
+    .filter((s) => s.kind === 'follow_up')
+    .sort((a, b) => a.position - b.position);
 
   return (
     <div>
@@ -162,6 +165,41 @@ export default async function EditorPage({
               className={CAMPO}
             />
           </div>
+        </div>
+
+        <div className={CARD}>
+          <h2 className="mb-1 font-medium">Continuação da conversa</h2>
+          <p className="mb-3 text-sm text-neutral-500">
+            Mensagens que saem <strong>depois que a pessoa responder</strong> a
+            sua DM. Uma por linha em cada campo: a primeira resposta dela dispara
+            a mensagem 1, a resposta seguinte dispara a mensagem 2.
+          </p>
+          <p className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+            Elas só saem se a pessoa responder. O Instagram não permite continuar
+            a conversa sozinho — a resposta dela é o que abre a janela de 24 horas
+            que autoriza a próxima mensagem. Se ela nunca responder, nada é
+            enviado, e isso não é defeito.
+          </p>
+
+          <label className="block text-sm text-neutral-600">
+            Mensagem 1
+            <textarea
+              name="followUp1"
+              rows={3}
+              defaultValue={followUps[0]?.variants.join('\n') ?? ''}
+              className={CAMPO}
+            />
+          </label>
+
+          <label className="mt-3 block text-sm text-neutral-600">
+            Mensagem 2
+            <textarea
+              name="followUp2"
+              rows={3}
+              defaultValue={followUps[1]?.variants.join('\n') ?? ''}
+              className={CAMPO}
+            />
+          </label>
         </div>
 
         <div className="flex items-center gap-3">

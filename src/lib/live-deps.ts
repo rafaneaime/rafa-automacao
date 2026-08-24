@@ -1,6 +1,6 @@
 import type { ProcessDeps } from './process-event';
 import { findAccountByIgId } from './repo/accounts';
-import { findPublishedAutomations } from './repo/automations';
+import { findPublishedAutomations, getAutomation } from './repo/automations';
 import {
   claimDelivery,
   releaseDelivery,
@@ -9,6 +9,12 @@ import {
 } from './repo/deliveries';
 import { upsertContact } from './repo/contacts';
 import { publicReply, privateReply, sendDm } from './meta/messaging';
+import {
+  findSentDelivery,
+  sentFollowUps,
+  claimFollowUp,
+  releaseFollowUp,
+} from './repo/follow-ups';
 
 export const liveDeps: ProcessDeps = {
   async findAccount(igUserId) {
@@ -29,6 +35,11 @@ export const liveDeps: ProcessDeps = {
   publicReply,
   privateReply,
   sendDm,
+  findSentDelivery,
+  findAutomationById: getAutomation,
+  sentFollowUps,
+  claimFollowUp,
+  releaseFollowUp,
   // Resposta rotativa: sorteia entre as variações para não parecer robô.
   pick: (items) => items[Math.floor(Math.random() * items.length)],
 };

@@ -302,12 +302,6 @@ Apagar os passos e reinserir em chamadas HTTP separadas deixa a automação sem 
 passos antigos e com só parte dos novos se um insert falhar. Precisa de
 `sql.transaction([...])`.
 
-### Publicar automação com DM vazia
-
-O painel permite publicar sem texto de DM. A automação fica com aparência de
-ativa e nunca envia nada, sem erro. Conhecido, não corrigido — vale avisar quem
-estiver montando.
-
 ---
 
 ## 6. O que o tutorial de origem errou

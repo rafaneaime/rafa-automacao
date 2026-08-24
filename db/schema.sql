@@ -59,5 +59,13 @@ create table if not exists webhook_events (
   error           text
 );
 
+create table if not exists follow_ups_sent (
+  id           serial primary key,
+  delivery_id  int references deliveries(id) on delete cascade,
+  position     int not null,
+  sent_at      timestamptz default now(),
+  unique (delivery_id, position)
+);
+
 create index if not exists deliveries_created_idx on deliveries (created_at desc);
 create index if not exists webhook_events_received_idx on webhook_events (received_at desc);

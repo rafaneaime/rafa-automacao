@@ -72,6 +72,18 @@ export async function salvarAutomacao(formData: FormData) {
           variants: textosDm,
           buttons: botaoUrl.length > 0 ? [{ title: botaoTitulo || 'Abrir', url: botaoUrl }] : [],
         },
+        {
+          position: 2,
+          kind: 'follow_up',
+          variants: linhas(formData.get('followUp1')),
+          buttons: [],
+        },
+        {
+          position: 3,
+          kind: 'follow_up',
+          variants: linhas(formData.get('followUp2')),
+          buttons: [],
+        },
       ],
     );
   } catch (error) {

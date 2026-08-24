@@ -2,6 +2,7 @@ import { matchesKeyword } from './matching';
 import type { NormalizedEvent, CommentEvent, MessageEvent } from './parse-event';
 import type { Automation } from './repo/types';
 import type { Button } from './meta/messaging';
+import { nextFollowUp } from './automations/follow-up';
 
 export const RATE_LIMIT_PER_HOUR = 750;
 
@@ -46,6 +47,14 @@ export type ProcessDeps = {
     buttons: Button[],
     token: string,
   ): Promise<unknown>;
+  findSentDelivery(
+    accountId: number,
+    igUserId: string,
+  ): Promise<{ id: number; automationId: number } | null>;
+  findAutomationById(automationId: number): Promise<Automation | null>;
+  sentFollowUps(deliveryId: number): Promise<number[]>;
+  claimFollowUp(deliveryId: number, position: number): Promise<boolean>;
+  releaseFollowUp(deliveryId: number, position: number): Promise<void>;
   pick<T>(items: T[]): T;
 };
 
@@ -215,10 +224,67 @@ async function processComment(
   );
 }
 
+// Continuação da conversa: a pessoa respondeu, e a resposta dela abriu a janela
+// de 24h do Meta. É o único momento em que podemos mandar mais mensagens.
+// Devolve null quando não há follow-up pendente, e aí o fluxo normal por
+// palavra-chave assume.
+async function tentarFollowUp(
+  event: MessageEvent,
+  account: { id: number; igUserId: string; accessToken: string },
+  deps: ProcessDeps,
+): Promise<ProcessResult | null> {
+  const delivery = await deps.findSentDelivery(account.id, event.fromId);
+  if (!delivery) return null;
+
+  const automation = await deps.findAutomationById(delivery.automationId);
+  if (!automation || automation.status !== 'published') return null;
+
+  const enviados = await deps.sentFollowUps(delivery.id);
+  const passo = nextFollowUp(automation, enviados);
+  if (!passo) return null;
+
+  if ((await deps.countRecentSent(account.id)) >= RATE_LIMIT_PER_HOUR) {
+    return { outcome: 'throttled', automationId: automation.id };
+  }
+
+  const reservou = await deps.claimFollowUp(delivery.id, passo.position);
+  if (!reservou) {
+    // Claim perdido: outra invocação concorrente já está mandando este
+    // follow-up agora. Devolver null aqui cairia no casamento por
+    // palavra-chave e podia mandar uma segunda mensagem pela mesma pessoa —
+    // por isso o outcome tem que ser duplicate, não null.
+    return { outcome: 'duplicate', automationId: automation.id };
+  }
+
+  try {
+    await deps.sendDm(
+      account.igUserId,
+      event.fromId,
+      deps.pick(passo.variants.filter((v) => v.trim().length > 0)),
+      passo.buttons,
+      account.accessToken,
+    );
+    return { outcome: 'sent', automationId: automation.id };
+  } catch (error) {
+    await deps.releaseFollowUp(delivery.id, passo.position);
+    return { outcome: 'error', automationId: automation.id, error: String(error) };
+  }
+}
+
 async function processMessage(
   event: MessageEvent,
   deps: ProcessDeps,
 ): Promise<ProcessResult> {
+  if (event.fromId === event.accountIgId) {
+    return { outcome: 'ignored', reason: 'mensagem da própria conta' };
+  }
+
+  const account = await deps.findAccount(event.accountIgId);
+  if (!account) return { outcome: 'ignored', reason: 'conta não conectada' };
+
+  const followUp = await tentarFollowUp(event, account, deps);
+  if (followUp) return followUp;
+
   const guards = await runGuards(
     {
       fromId: event.fromId,
@@ -234,7 +300,7 @@ async function processMessage(
   );
   if (!guards.ok) return guards.result;
 
-  const { account, automation } = guards;
+  const { automation } = guards;
   const dmStep = automation.steps.find((s) => s.kind === 'dm');
 
   return runSend(

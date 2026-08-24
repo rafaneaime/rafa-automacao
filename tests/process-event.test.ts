@@ -55,6 +55,11 @@ function deps(over: Partial<ProcessDeps> = {}): ProcessDeps {
     publicReply: vi.fn().mockResolvedValue({}),
     privateReply: vi.fn().mockResolvedValue({}),
     sendDm: vi.fn().mockResolvedValue({}),
+    findSentDelivery: vi.fn().mockResolvedValue(null),
+    findAutomationById: vi.fn().mockResolvedValue(null),
+    sentFollowUps: vi.fn().mockResolvedValue([]),
+    claimFollowUp: vi.fn().mockResolvedValue(true),
+    releaseFollowUp: vi.fn().mockResolvedValue(undefined),
     pick: (items) => items[0],
     ...over,
   };
@@ -288,5 +293,93 @@ describe('processEvent com mensagem de DM', () => {
       .invocationCallOrder[0];
     const sendOrder = (d.sendDm as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
     expect(upsertOrder).toBeLessThan(sendOrder);
+  });
+});
+
+describe('processEvent com follow-up', () => {
+  const resposta = {
+    kind: 'message' as const,
+    accountIgId: 'conta',
+    fromId: 'fulana',
+    text: 'quanto custa?',
+  };
+
+  function comFollowUp(over: Partial<ProcessDeps> = {}): ProcessDeps {
+    const auto = automation({
+      steps: [
+        { id: 2, position: 1, kind: 'dm', variants: ['link'], buttons: [] },
+        { id: 3, position: 2, kind: 'follow_up', variants: ['te ajudo?'], buttons: [] },
+      ],
+    });
+    return deps({
+      findSentDelivery: vi.fn().mockResolvedValue({ id: 50, automationId: 10 }),
+      findAutomationById: vi.fn().mockResolvedValue(auto),
+      sentFollowUps: vi.fn().mockResolvedValue([]),
+      claimFollowUp: vi.fn().mockResolvedValue(true),
+      releaseFollowUp: vi.fn().mockResolvedValue(undefined),
+      ...over,
+    });
+  }
+
+  it('envia o follow-up quando a pessoa responde', async () => {
+    const d = comFollowUp();
+    const r = await processEvent(resposta, d);
+
+    expect(r).toEqual({ outcome: 'sent', automationId: 10 });
+    expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'te ajudo?', [], 'tok');
+    expect(d.claimFollowUp).toHaveBeenCalledWith(50, 2);
+  });
+
+  it('não envia o mesmo follow-up duas vezes', async () => {
+    const d = comFollowUp({ sentFollowUps: vi.fn().mockResolvedValue([2]) });
+    const r = await processEvent(resposta, d);
+
+    expect(r).toEqual({ outcome: 'ignored', reason: 'nenhuma automação casou' });
+    expect(d.sendDm).not.toHaveBeenCalled();
+  });
+
+  it('respeita o limite por hora', async () => {
+    const d = comFollowUp({
+      countRecentSent: vi.fn().mockResolvedValue(RATE_LIMIT_PER_HOUR),
+    });
+    const r = await processEvent(resposta, d);
+
+    expect(r).toEqual({ outcome: 'throttled', automationId: 10 });
+    expect(d.sendDm).not.toHaveBeenCalled();
+    expect(d.claimFollowUp).not.toHaveBeenCalled();
+  });
+
+  it('não cai para palavra-chave quando o claim do follow-up é perdido para uma invocação concorrente', async () => {
+    const d = comFollowUp({ claimFollowUp: vi.fn().mockResolvedValue(false) });
+    const r = await processEvent(resposta, d);
+
+    expect(r).toEqual({ outcome: 'duplicate', automationId: 10 });
+    expect(d.sendDm).not.toHaveBeenCalled();
+    expect(d.findPublishedAutomations).not.toHaveBeenCalled();
+  });
+
+  it('solta a reserva quando o envio falha', async () => {
+    const d = comFollowUp({
+      sendDm: vi.fn().mockRejectedValue(new Error('Meta respondeu 400')),
+    });
+    const r = await processEvent(resposta, d);
+
+    expect(r.outcome).toBe('error');
+    expect(d.releaseFollowUp).toHaveBeenCalledWith(50, 2);
+  });
+
+  it('cai para o casamento por palavra-chave quando a pessoa nunca recebeu nada', async () => {
+    const d = comFollowUp({ findSentDelivery: vi.fn().mockResolvedValue(null) });
+    await processEvent({ ...resposta, text: 'quero o preço' }, d);
+
+    expect(d.findPublishedAutomations).toHaveBeenCalledWith(1, 'dm');
+  });
+
+  it('ignora resposta da própria conta antes de qualquer consulta', async () => {
+    const d = comFollowUp();
+    const r = await processEvent({ ...resposta, fromId: 'conta' }, d);
+
+    expect(r).toEqual({ outcome: 'ignored', reason: 'mensagem da própria conta' });
+    expect(d.findSentDelivery).not.toHaveBeenCalled();
   });
 });

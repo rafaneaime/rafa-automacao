@@ -20,7 +20,7 @@ type StepRow = {
   id: number;
   automation_id: number;
   position: number;
-  kind: 'public_reply' | 'dm';
+  kind: 'public_reply' | 'dm' | 'follow_up';
   variants: string[];
   buttons: AutomationStep['buttons'];
 };
