@@ -42,9 +42,16 @@ export default async function LogsPage() {
         ) : (
           <ul className="divide-y divide-neutral-100 border-y border-neutral-200">
             {disparos.map((d) => (
-              <li key={d.id} className="py-3">
+              <li key={`${d.kind}-${d.id}`} className="py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{d.automationName}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{d.automationName}</span>
+                    {d.kind === 'follow_up' && (
+                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                        continuação {d.continuacao}
+                      </span>
+                    )}
+                  </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs ${CORES[d.status] ?? ''}`}>
                     {ROTULOS[d.status] ?? d.status}
                   </span>

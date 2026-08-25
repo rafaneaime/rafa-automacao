@@ -44,6 +44,14 @@ export type DeliveryLog = {
   status: string;
   error: string | null;
   createdAt: Date;
+  kind: 'dm' | 'follow_up';
+  /**
+   * O número mostrado na etiqueta ("continuação 1"), contando a partir de 1 —
+   * NÃO a coluna `position` de follow_ups_sent, que vale 2 e 3 porque 0 e 1
+   * são a resposta pública e a DM. Tem nome próprio de propósito: passar este
+   * valor para claimFollowUp ou nextFollowUp acerta o passo errado.
+   */
+  continuacao: number | null;
 };
 
 export type WebhookEventLog = {
