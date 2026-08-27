@@ -29,6 +29,7 @@ describe('parseEvents com mensagem', () => {
         accountIgId: '17841400000000000',
         fromId: '9876543210',
         text: 'oi, quero saber mais',
+        mid: 'aWc6...',
       },
     ]);
   });
@@ -85,7 +86,32 @@ describe('parseEvents com comentário e mensagem no mesmo payload', () => {
         accountIgId: '17841400000000000',
         fromId: '1111111111',
         text: 'oi, quero saber mais',
+        mid: 'aWc6...',
       },
+    ]);
+  });
+});
+
+describe('mid da mensagem', () => {
+  // O mid é a única coisa estável que uma reentrega do mesmo evento traz
+  // igual. Sem ele não há como não contar a mesma interação duas vezes.
+  it('captura o mid quando existe', () => {
+    const [evento] = parseEvents(message);
+    expect(evento).toMatchObject({ kind: 'message', mid: 'aWc6...' });
+  });
+
+  it('devolve mid nulo quando o payload não traz, sem quebrar', () => {
+    const semMid = {
+      object: 'instagram',
+      entry: [
+        {
+          id: 'conta',
+          messaging: [{ sender: { id: 'pessoa' }, message: { text: 'oi' } }],
+        },
+      ],
+    };
+    expect(parseEvents(semMid)).toEqual([
+      { kind: 'message', accountIgId: 'conta', fromId: 'pessoa', text: 'oi', mid: null },
     ]);
   });
 });

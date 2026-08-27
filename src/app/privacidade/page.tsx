@@ -5,11 +5,11 @@ export default function PrivacidadePage() {
   const email = env.emailContato();
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 text-neutral-800">
+    <main className="mx-auto max-w-3xl px-6 py-12 text-tinta">
       {!email && (
-        <div className="mb-8 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mb-8 rounded-md border border-interessado-forte bg-interessado-tenue p-4 text-sm text-interessado-forte">
           <strong>Falta configurar o e-mail de contato.</strong> Defina a
-          variável <code className="rounded bg-amber-100 px-1 py-0.5">EMAIL_CONTATO</code>{' '}
+          variável <code className="rounded bg-interessado-tenue px-1 py-0.5">EMAIL_CONTATO</code>{' '}
           nas configurações do seu projeto na Vercel e publique de novo. Sem
           isso, quem quiser pedir a remoção dos próprios dados não tem como
           falar com você — e o Meta pode recusar a política.
@@ -17,14 +17,14 @@ export default function PrivacidadePage() {
       )}
 
       <h1 className="mb-2 text-2xl font-semibold">Política de Privacidade</h1>
-      <p className="mb-8 text-sm text-neutral-500">
+      <p className="mb-8 text-sm text-tinta-fraca">
         Última atualização: preencha a data em que você publicou esta
         instalação.
       </p>
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">O que esta aplicação faz</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Esta aplicação é uma automação de respostas para o Instagram: quando
           alguém comenta em uma publicação do operador desta conta ou envia
           uma mensagem direta, e o conteúdo casa com uma palavra-chave
@@ -36,11 +36,11 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Quais dados são coletados</h2>
-        <p className="mb-2 text-sm leading-relaxed text-neutral-700">
+        <p className="mb-2 text-sm leading-relaxed text-tinta-media">
           Quando alguém comenta em uma publicação ou envia uma DM para a
           conta conectada, a aplicação armazena:
         </p>
-        <ul className="mb-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-neutral-700">
+        <ul className="mb-2 list-disc space-y-1 pl-5 text-sm leading-relaxed text-tinta-media">
           <li>
             o ID de usuário do Instagram e, quando disponível, o nome de
             usuário (username) de quem comentou ou enviou a mensagem;
@@ -56,7 +56,7 @@ export default function PrivacidadePage() {
             para fins de diagnóstico e depuração.
           </li>
         </ul>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Não é coletado nenhum dado além do que chega através da própria API
           do Instagram nesses eventos — não há rastreamento em outras partes
           do Instagram, em outros sites, nem coleta por formulários externos.
@@ -65,7 +65,7 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Por que esses dados são usados</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Os dados são usados exclusivamente para: (1) enviar a resposta
           automática que a própria pessoa provocou ao comentar ou mandar
           mensagem, e (2) evitar enviar a mesma resposta mais de uma vez para
@@ -77,7 +77,7 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Onde os dados ficam armazenados</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Os dados ficam em um banco de dados Postgres controlado pelo
           operador desta instalação (quem fez o deploy desta aplicação). Esse
           banco não é compartilhado com terceiros e não é acessado pelo autor
@@ -88,7 +88,7 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Por quanto tempo os dados ficam guardados</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Esta aplicação não exclui dados automaticamente. Os registros de
           contatos, comentários, mensagens e envios ficam armazenados até que
           o operador os apague manualmente do banco de dados. Não há uma
@@ -98,7 +98,7 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Quem é o responsável por esses dados</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Quem controla os dados coletados por esta instalação é a pessoa ou
           empresa que fez o deploy desta aplicação e opera a conta do
           Instagram conectada a ela — não o autor do software. Este é um
@@ -113,7 +113,7 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Papel do Meta / Instagram</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Os dados chegam a esta aplicação através da API do Instagram
           (Meta), por meio de webhooks configurados na Plataforma Meta para
           Desenvolvedores. O uso dessa API está sujeito aos termos e às
@@ -125,7 +125,7 @@ export default function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Seus direitos</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Se você comentou ou enviou uma mensagem para a conta conectada a
           esta instalação e quer solicitar a remoção dos seus dados (ID de
           usuário, username, textos armazenados e histórico de envios), entre
@@ -136,7 +136,7 @@ export default function PrivacidadePage() {
 
       <section>
         <h2 className="mb-2 text-lg font-medium">Contato</h2>
-        <p className="text-sm leading-relaxed text-neutral-700">
+        <p className="text-sm leading-relaxed text-tinta-media">
           Para dúvidas sobre esta política ou para solicitar a remoção dos
           seus dados, entre em contato com o operador desta instalação em:{' '}
           <strong>{email || '(e-mail de contato ainda não configurado)'}</strong>.

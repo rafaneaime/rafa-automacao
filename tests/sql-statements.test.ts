@@ -110,9 +110,16 @@ describe('splitSqlStatements', () => {
     expect(() => splitSqlStatements('select $$sem fim')).toThrow(/não fechada/);
   });
 
-  // Âncora de regressão: o schema que já roda em produção precisa continuar
-  // produzindo exatamente os mesmos 9 comandos que o split(';') produzia.
-  it('produz 9 comandos para o schema atual, como antes', () => {
+  // Âncora de regressão: o schema real precisa continuar produzindo os mesmos
+  // comandos que o `split(';')` produzia.
+  //
+  // Sem número fixo de propósito. A primeira versão afirmava "9 comandos", e
+  // ela quebrou no dia em que o schema ganhou uma tabela — acusando uma
+  // mudança legítima como se fosse defeito. O que importa aqui não é quantos
+  // comandos existem, é os dois separadores concordarem: no dia em que
+  // deixarem de concordar, é porque o schema ganhou aspas, comentário ou
+  // corpo de função que o ingênuo cortaria no meio.
+  it('separa o schema atual igual ao split ingênuo', () => {
     const schema = readFileSync('db/schema.sql', 'utf8');
     const antes = schema
       .split(';')
@@ -120,8 +127,8 @@ describe('splitSqlStatements', () => {
       .filter((s) => s.length > 0);
     const depois = splitSqlStatements(schema);
 
-    expect(depois).toHaveLength(9);
     expect(depois).toEqual(antes);
+    expect(depois.length).toBeGreaterThan(0);
   });
 });
 

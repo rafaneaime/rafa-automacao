@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Relatorios de trabalho dos agentes. Ficam fora do git de proposito: sao
+# rascunho, nao produto, e ja apareceu senha em claro dentro de um deles.
+.superpowers/
+
 # vercel
 .vercel
 

@@ -5,12 +5,14 @@ import { getFirstAccount } from '@/lib/repo/accounts';
 import { listMedia, type Media } from '@/lib/meta/media';
 import { salvarAutomacao, excluirAutomacao } from '../../actions';
 import { BotoesSalvar } from './botoes-salvar';
+import { juntarVariacoes } from '@/lib/automations/variacoes';
+import { CampoDeVariacoes } from './campo-variacoes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const CAMPO = 'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm';
-const CARD = 'rounded-lg border border-neutral-200 p-4';
+const CAMPO = 'w-full rounded-md border border-linha-forte px-3 py-2 text-sm';
+const CARD = 'rounded-lg border border-linha-forte p-4';
 
 export default async function EditorPage({
   params,
@@ -45,7 +47,7 @@ export default async function EditorPage({
 
   return (
     <div>
-      <Link href="/" className="text-sm text-neutral-500 hover:underline">
+      <Link href="/" className="text-sm text-tinta-fraca hover:underline">
         ← Automações
       </Link>
 
@@ -54,8 +56,8 @@ export default async function EditorPage({
         <span
           className={`rounded-full px-2 py-1 text-xs ${
             automacao.status === 'published'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-neutral-100 text-neutral-600'
+              ? 'bg-subindo-tenue text-subindo-forte'
+              : 'bg-frio-tenue text-tinta-media'
           }`}
         >
           {automacao.status === 'published' ? 'Publicada' : 'Rascunho'}
@@ -63,21 +65,21 @@ export default async function EditorPage({
       </div>
 
       {erro === 'dm-vazia' && (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-4 rounded-md border border-caindo-tenue bg-caindo-tenue px-3 py-2 text-sm text-caindo-forte">
           Não publiquei: a DM privada está vazia. Sem texto ali, ninguém recebe
           nada. Salvei como rascunho — preencha a DM e publique de novo.
         </p>
       )}
 
       {ok === 'publicada' && (
-        <p className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+        <p className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-subindo-forte">
           Publicada. A partir de agora ela dispara sozinha, a cada comentário que
           casar com as palavras-chave.
         </p>
       )}
 
       {ok === 'rascunho' && (
-        <p className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+        <p className="mt-4 rounded-md border border-linha-forte bg-papel px-3 py-2 text-sm text-tinta-media">
           Rascunho salvo. Ela ainda <strong>não</strong> dispara — clique em
           Publicar quando estiver pronta.
         </p>
@@ -128,7 +130,7 @@ export default async function EditorPage({
                   placeholder="ID do Reel (vazio = qualquer Reel)"
                   className={CAMPO}
                 />
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-tinta-fraca">
                   {erroMidias
                     ? `Não consegui listar suas mídias: ${erroMidias}`
                     : 'Conecte a conta em Configuração para escolher o Reel numa lista.'}
@@ -153,29 +155,32 @@ export default async function EditorPage({
 
         <div className={CARD}>
           <h2 className="mb-1 font-medium">Resposta pública no comentário</h2>
-          <p className="mb-3 text-sm text-neutral-500">
-            Uma por linha. O sistema sorteia entre elas a cada disparo, para não
-            parecer robô. Deixe vazio para não responder publicamente.
+          <p className="mb-3 text-sm text-tinta-fraca">
+            Escreva a resposta. Para ter mais de uma versão, e o sistema
+            sortear entre elas, separe cada uma com <strong>uma linha em
+            branco</strong>. Deixe vazio para não responder publicamente.
           </p>
-          <textarea
+          <CampoDeVariacoes
             name="respostasPublicas"
             rows={4}
-            defaultValue={publica?.variants.join('\n') ?? ''}
+            defaultValue={juntarVariacoes(publica?.variants ?? [])}
             className={CAMPO}
           />
         </div>
 
         <div className={CARD}>
           <h2 className="mb-1 font-medium">DM privada</h2>
-          <p className="mb-3 text-sm text-neutral-500">
-            Uma variação por linha. O pedido de follow e o link vão nesta mesma
-            mensagem, de propósito: uma segunda DM cairia fora da janela de 24h
-            do Meta e falharia com erro #10.
+          <p className="mb-3 text-sm text-tinta-fraca">
+            Escreva a mensagem — as quebras de linha ficam nela. Para ter mais
+            de uma versão, e o sistema sortear entre elas, separe cada uma com{' '}
+            <strong>uma linha em branco</strong>. O pedido de follow e o link
+            vão nesta mesma mensagem, de propósito: uma segunda DM cairia fora
+            da janela de 24h do Meta e falharia com erro #10.
           </p>
-          <textarea
+          <CampoDeVariacoes
             name="textosDm"
             rows={4}
-            defaultValue={dm?.variants.join('\n') ?? ''}
+            defaultValue={juntarVariacoes(dm?.variants ?? [])}
             className={CAMPO}
           />
 
@@ -197,34 +202,34 @@ export default async function EditorPage({
 
         <div className={CARD}>
           <h2 className="mb-1 font-medium">Continuação da conversa</h2>
-          <p className="mb-3 text-sm text-neutral-500">
+          <p className="mb-3 text-sm text-tinta-fraca">
             Mensagens que saem <strong>depois que a pessoa responder</strong> a
             sua DM. Uma por linha em cada campo: a primeira resposta dela dispara
             a mensagem 1, a resposta seguinte dispara a mensagem 2.
           </p>
-          <p className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="mb-3 rounded-md bg-interessado-tenue p-3 text-sm text-interessado-forte">
             Elas só saem se a pessoa responder. O Instagram não permite continuar
             a conversa sozinho — a resposta dela é o que abre a janela de 24 horas
             que autoriza a próxima mensagem. Se ela nunca responder, nada é
             enviado, e isso não é defeito.
           </p>
 
-          <label className="block text-sm text-neutral-600">
+          <label className="block text-sm text-tinta-media">
             Mensagem 1
-            <textarea
+            <CampoDeVariacoes
               name="followUp1"
               rows={3}
-              defaultValue={followUps[0]?.variants.join('\n') ?? ''}
+              defaultValue={juntarVariacoes(followUps[0]?.variants ?? [])}
               className={CAMPO}
             />
           </label>
 
-          <label className="mt-3 block text-sm text-neutral-600">
+          <label className="mt-3 block text-sm text-tinta-media">
             Mensagem 2
-            <textarea
+            <CampoDeVariacoes
               name="followUp2"
               rows={3}
-              defaultValue={followUps[1]?.variants.join('\n') ?? ''}
+              defaultValue={juntarVariacoes(followUps[1]?.variants ?? [])}
               className={CAMPO}
             />
           </label>
@@ -232,7 +237,7 @@ export default async function EditorPage({
 
         <div className="flex flex-wrap items-center gap-3">
           <BotoesSalvar publicada={automacao.status === 'published'} />
-          <span className="text-sm text-neutral-500">
+          <span className="text-sm text-tinta-fraca">
             {automacao.status === 'published'
               ? 'Publicada — disparando agora'
               : 'Rascunho — não dispara'}

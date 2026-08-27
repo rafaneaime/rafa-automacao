@@ -13,6 +13,13 @@ export type MessageEvent = {
   accountIgId: string;
   fromId: string;
   text: string;
+  /**
+   * Identificador da mensagem no Meta. É a única coisa estável que uma
+   * reentrega do mesmo evento traz igual — o que faz dele a chave para não
+   * contar a mesma interação duas vezes. Pode faltar em payload antigo ou
+   * malformado, e aí quem consome decide o que fazer.
+   */
+  mid: string | null;
 };
 
 export type NormalizedEvent = CommentEvent | MessageEvent;
@@ -66,7 +73,7 @@ function parseMessaging(accountIgId: string, item: unknown): MessageEvent | null
   const text = asString(message.text);
   if (!fromId || text === null) return null;
 
-  return { kind: 'message', accountIgId, fromId, text };
+  return { kind: 'message', accountIgId, fromId, text, mid: asString(message.mid) };
 }
 
 export function parseEvents(payload: unknown): NormalizedEvent[] {

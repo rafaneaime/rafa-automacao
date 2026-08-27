@@ -67,5 +67,20 @@ create table if not exists follow_ups_sent (
   unique (delivery_id, position)
 );
 
+-- Mensagens já processadas, para o Meta reentregar sem a pessoa receber duas
+-- vezes.
+--
+-- A trava de deliveries protege a DM original, mas não a continuação da
+-- conversa: numa reentrega, o sistema via a mensagem 1 já enviada, escolhia a
+-- 2 e mandava — duas mensagens de uma resposta só, sem erro nenhum aparecer.
+-- O `mid` é a única coisa estável que a reentrega traz igual.
+create table if not exists processed_messages (
+  id           serial primary key,
+  account_id   int references accounts(id) on delete cascade,
+  mid          text not null,
+  processed_at timestamptz default now(),
+  unique (account_id, mid)
+);
+
 create index if not exists deliveries_created_idx on deliveries (created_at desc);
 create index if not exists webhook_events_received_idx on webhook_events (received_at desc);

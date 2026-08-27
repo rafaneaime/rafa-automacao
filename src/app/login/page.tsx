@@ -30,7 +30,7 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
       <h1 className="mb-1 text-2xl font-semibold">Painel</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <p className="mb-6 text-sm text-tinta-fraca">
         Digite a senha definida em PANEL_PASSWORD.
       </p>
 
@@ -41,11 +41,11 @@ export default async function LoginPage({
           autoFocus
           required
           placeholder="Senha"
-          className="rounded-md border border-neutral-300 px-3 py-2"
+          className="rounded-md border border-linha-forte px-3 py-2"
         />
         <button
           type="submit"
-          className="rounded-md bg-neutral-900 px-3 py-2 text-white"
+          className="rounded-lg bg-tinta px-4 py-2 text-sm font-medium text-papel transition-colors hover:bg-tinta/90"
         >
           Entrar
         </button>

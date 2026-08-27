@@ -51,7 +51,10 @@ function deps(over: Partial<ProcessDeps> = {}): ProcessDeps {
     releaseDelivery: vi.fn().mockResolvedValue(undefined),
     markDelivery: vi.fn().mockResolvedValue(undefined),
     countRecentSent: vi.fn().mockResolvedValue(0),
-    upsertContact: vi.fn().mockResolvedValue(undefined),
+    claimMessage: vi.fn().mockResolvedValue(true),
+    releaseMessage: vi.fn().mockResolvedValue(undefined),
+    upsertContact: vi.fn().mockResolvedValue(99),
+    registrarInteracao: vi.fn().mockResolvedValue(undefined),
     publicReply: vi.fn().mockResolvedValue({}),
     privateReply: vi.fn().mockResolvedValue({}),
     sendDm: vi.fn().mockResolvedValue({}),
@@ -75,9 +78,13 @@ describe('processEvent com comentário', () => {
     expect(d.privateReply).toHaveBeenCalledWith(
       'conta',
       'c1',
+      'fulana',
       'me segue e pega o link',
       [{ title: 'Abrir', url: 'https://exemplo.com' }],
       'tok',
+      // A automação vai junto: é ela que a Plataforma carimba no link
+      // rastreado para saber, depois, qual oferta gerou a compra.
+      10,
     );
     expect(d.markDelivery).toHaveBeenCalledWith(10, 'fulana', 'sent', null);
     expect(d.upsertContact).toHaveBeenCalledWith(1, 'fulana', 'fulana');
@@ -198,6 +205,7 @@ describe('processEvent com comentário', () => {
 describe('processEvent com mensagem de DM', () => {
   const message: MessageEvent = {
     kind: 'message',
+    mid: 'mid-1',
     accountIgId: 'conta',
     fromId: 'fulana',
     text: 'quero o preço',
@@ -218,6 +226,7 @@ describe('processEvent com mensagem de DM', () => {
       'me segue e pega o link',
       [{ title: 'Abrir', url: 'https://exemplo.com' }],
       'tok',
+      10,
     );
     expect(d.publicReply).not.toHaveBeenCalled();
   });
@@ -299,6 +308,7 @@ describe('processEvent com mensagem de DM', () => {
 describe('processEvent com follow-up', () => {
   const resposta = {
     kind: 'message' as const,
+    mid: 'mid-2',
     accountIgId: 'conta',
     fromId: 'fulana',
     text: 'quanto custa?',
@@ -326,7 +336,7 @@ describe('processEvent com follow-up', () => {
     const r = await processEvent(resposta, d);
 
     expect(r).toEqual({ outcome: 'sent', automationId: 10 });
-    expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'te ajudo?', [], 'tok');
+    expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'te ajudo?', [], 'tok', 10);
     expect(d.claimFollowUp).toHaveBeenCalledWith(50, 2);
   });
 
@@ -381,5 +391,112 @@ describe('processEvent com follow-up', () => {
 
     expect(r).toEqual({ outcome: 'ignored', reason: 'mensagem da própria conta' });
     expect(d.findSentDelivery).not.toHaveBeenCalled();
+  });
+});
+
+describe('registro de interação no histórico', () => {
+  it('registra o comentário e a DM enviada, nessa ordem', async () => {
+    const d = deps();
+    await processEvent(comment(), d);
+
+    const chamadas = (d.registrarInteracao as ReturnType<typeof vi.fn>).mock.calls.map(
+      ([dados]) => [dados.tipo, dados.referencia, dados.contactId],
+    );
+    expect(chamadas).toEqual([
+      ['comentario', 'c1', 99],
+      ['dm_enviada', 'c1-resposta', 99],
+    ]);
+  });
+
+  // Histórico é importante, entrega é essencial. Se a gravação falhar, a DM
+  // precisa sair do mesmo jeito — o contrário seria automação parando por
+  // causa de telemetria.
+  it('falha ao registrar não impede o envio', async () => {
+    const d = deps({
+      registrarInteracao: vi.fn().mockRejectedValue(new Error('banco fora do ar')),
+    });
+
+    const resultado = await processEvent(comment(), d);
+
+    expect(resultado).toEqual({ outcome: 'sent', automationId: 10 });
+    expect(d.privateReply).toHaveBeenCalled();
+    expect(d.markDelivery).toHaveBeenCalledWith(10, 'fulana', 'sent', null);
+  });
+
+  it('não registra envio quando o disparo falha', async () => {
+    const d = deps({
+      privateReply: vi.fn().mockRejectedValue(new Error('Meta respondeu 400')),
+    });
+    await processEvent(comment(), d);
+
+    const tipos = (d.registrarInteracao as ReturnType<typeof vi.fn>).mock.calls.map(
+      ([dados]) => dados.tipo,
+    );
+    expect(tipos).toEqual(['comentario']);
+  });
+
+  it('não registra nada quando as guardas barram o evento', async () => {
+    const d = deps({ findPublishedAutomations: vi.fn().mockResolvedValue([]) });
+    await processEvent(comment(), d);
+    expect(d.registrarInteracao).not.toHaveBeenCalled();
+  });
+});
+
+describe('dedup da mensagem pelo mid', () => {
+  function message(over: Partial<MessageEvent> = {}): MessageEvent {
+    return {
+      kind: 'message',
+      mid: 'mid-1',
+      accountIgId: 'conta',
+      fromId: 'fulana',
+      text: 'quero o preço',
+      ...over,
+    };
+  }
+
+  // O caso que motivou tudo: numa reentrega do Meta, o sistema via a mensagem
+  // 1 já enviada, escolhia a 2 e mandava. Duas mensagens de uma resposta só,
+  // sem erro nenhum aparecer.
+  it('reentrega da mesma mensagem não dispara nada', async () => {
+    const d = deps({ claimMessage: vi.fn().mockResolvedValue(false) });
+
+    const resultado = await processEvent(message(), d);
+
+    expect(resultado.outcome).toBe('duplicate');
+    expect(d.sendDm).not.toHaveBeenCalled();
+    expect(d.findSentDelivery).not.toHaveBeenCalled();
+  });
+
+  it('reserva depois do anti-loop, para o próprio eco não gastar reserva', async () => {
+    const d = deps();
+    await processEvent(message({ fromId: 'conta' }), d);
+    expect(d.claimMessage).not.toHaveBeenCalled();
+  });
+
+  it('mensagem sem mid segue sem a proteção, em vez de ser recusada', async () => {
+    const d = deps();
+    const resultado = await processEvent(message({ mid: null }), d);
+
+    expect(d.claimMessage).not.toHaveBeenCalled();
+    expect(resultado.outcome).not.toBe('duplicate');
+  });
+
+  // Sem soltar, uma falha de envio consumiria a única chance daquela
+  // mensagem: a reentrega seguinte seria recusada e a pessoa nunca receberia.
+  it('falha de envio solta a reserva para a reentrega poder tentar', async () => {
+    const d = deps({
+      sendDm: vi.fn().mockRejectedValue(new Error('Meta respondeu 400')),
+    });
+
+    const resultado = await processEvent(message(), d);
+
+    expect(resultado.outcome).toBe('error');
+    expect(d.releaseMessage).toHaveBeenCalledWith(1, 'mid-1');
+  });
+
+  it('envio bem-sucedido mantém a reserva', async () => {
+    const d = deps();
+    await processEvent(message(), d);
+    expect(d.releaseMessage).not.toHaveBeenCalled();
   });
 });

@@ -35,6 +35,21 @@ export async function getFirstAccount(): Promise<Account | null> {
   return rows[0] ? toAccount(rows[0]) : null;
 }
 
+/**
+ * Todas as contas conectadas.
+ *
+ * O produto normal tem uma só, e por isso quase tudo usa `getFirstAccount`.
+ * Trabalho que roda sozinho, porém, não pode escolher uma conta e ignorar as
+ * outras: a segunda ficaria parada em silêncio, sem nada na tela dizendo isso.
+ */
+export async function listarContas(): Promise<Account[]> {
+  const rows = (await sql`
+    select id, ig_user_id, username, access_token, token_expires_at
+    from accounts order by id
+  `) as Row[];
+  return rows.map(toAccount);
+}
+
 export async function saveAccount(
   igUserId: string,
   username: string | null,

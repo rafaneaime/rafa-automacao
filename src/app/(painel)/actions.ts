@@ -12,13 +12,13 @@ import {
 import { AutomacaoInvalidaError } from '@/lib/automations/validation';
 import { mesclarPassos } from '@/lib/automations/passos';
 import type { MatchMode } from '@/lib/matching';
+import { separarVariacoes } from '@/lib/automations/variacoes';
 
-function linhas(value: FormDataEntryValue | null): string[] {
-  return String(value ?? '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-}
+/**
+ * Variações de mensagem. A regra é linha em branco separa — ver
+ * `lib/automations/variacoes.ts`, que explica por que ela mudou.
+ */
+const linhas = separarVariacoes;
 
 export async function criarAutomacao(formData: FormData) {
   const account = await getFirstAccount();

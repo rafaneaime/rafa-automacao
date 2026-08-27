@@ -1,6 +1,15 @@
 import Link from 'next/link';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { listAutomations } from '@/lib/repo/automations';
+import { IconeMegafone } from '@/lib/painel/icones';
+import {
+  Botao,
+  Cartao,
+  Chip,
+  ESTILO_CAMPO,
+  TituloDaTela,
+  Vazio,
+} from '@/lib/painel/ui';
 import { criarAutomacao } from './actions';
 
 export const runtime = 'nodejs';
@@ -12,14 +21,18 @@ export default async function AutomacoesPage() {
   if (!account) {
     return (
       <div>
-        <h1 className="mb-2 text-xl font-semibold">Automações</h1>
-        <p className="text-sm text-neutral-600">
+        <TituloDaTela
+          titulo="Automações"
+          pergunta="O que dispara sozinho quando alguém comenta ou manda DM."
+          icone={<IconeMegafone className="h-5 w-5" />}
+        />
+        <Vazio>
           Nenhuma conta conectada ainda.{' '}
           <Link href="/configuracao" className="underline">
             Conecte seu Instagram
           </Link>{' '}
           para começar.
-        </p>
+        </Vazio>
       </div>
     );
   }
@@ -28,39 +41,40 @@ export default async function AutomacoesPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold">Automações</h1>
+      <TituloDaTela
+        titulo="Automações"
+        pergunta="O que dispara sozinho quando alguém comenta ou manda DM."
+        icone={<IconeMegafone className="h-5 w-5" />}
+      />
 
-      <form action={criarAutomacao} className="mb-8 flex flex-wrap gap-2">
+      <form action={criarAutomacao} className="mb-6 flex flex-wrap gap-2">
         <input
           name="nome"
           placeholder="Nome da automação"
-          className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className={`flex-1 ${ESTILO_CAMPO}`}
         />
         <select
           name="gatilho"
-          className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className={ESTILO_CAMPO}
         >
           <option value="comment">Comentário</option>
           <option value="dm">DM</option>
         </select>
-        <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white">
-          Criar
-        </button>
+        <Botao>Criar</Botao>
       </form>
 
       {automacoes.length === 0 ? (
-        <p className="text-sm text-neutral-500">
-          Nenhuma automação ainda. Crie a primeira acima.
-        </p>
+        <Vazio>Nenhuma automação ainda. Crie a primeira acima.</Vazio>
       ) : (
-        <ul className="divide-y divide-neutral-200 border-y border-neutral-200">
+        <Cartao>
+        <ul className="divide-y divide-linha">
           {automacoes.map((a) => (
-            <li key={a.id} className="flex items-center justify-between py-3">
+            <li key={a.id} className="flex items-center justify-between gap-3 p-4">
               <div>
                 <Link href={`/automacoes/${a.id}`} className="font-medium hover:underline">
                   {a.name}
                 </Link>
-                <p className="text-sm text-neutral-500">
+                <p className="mt-0.5 text-sm text-tinta-media">
                   {a.triggerType === 'comment' ? 'Comentário' : 'DM'}
                   {' · '}
                   {a.matchMode === 'any'
@@ -70,18 +84,19 @@ export default async function AutomacoesPage() {
                   {a.deliveryCount} disparo{a.deliveryCount === 1 ? '' : 's'}
                 </p>
               </div>
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
+              <Chip
+                cor={
                   a.status === 'published'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-neutral-100 text-neutral-600'
-                }`}
+                    ? 'bg-subindo-tenue text-subindo-forte'
+                    : 'bg-frio-tenue text-tinta-media'
+                }
               >
                 {a.status === 'published' ? 'Publicada' : 'Rascunho'}
-              </span>
+              </Chip>
             </li>
           ))}
         </ul>
+        </Cartao>
       )}
     </div>
   );

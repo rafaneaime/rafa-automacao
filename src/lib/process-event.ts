@@ -27,18 +27,61 @@ export type ProcessDeps = {
     error: string | null,
   ): Promise<void>;
   countRecentSent(accountId: number): Promise<number>;
+  /**
+   * Reserva a mensagem recebida pelo `mid`. `false` = já foi processada.
+   *
+   * A trava de `deliveries` protege a DM original, mas não a continuação da
+   * conversa: numa reentrega do Meta, o sistema via a mensagem 1 já enviada,
+   * escolhia a 2 e mandava — duas mensagens de uma resposta só, sem erro
+   * nenhum aparecer.
+   */
+  claimMessage(accountId: number, mid: string): Promise<boolean>;
+  releaseMessage(accountId: number, mid: string): Promise<void>;
   upsertContact(
     accountId: number,
     igUserId: string,
     username: string | null,
-  ): Promise<void>;
+  ): Promise<number>;
+  /**
+   * Registra a interação no histórico da Plataforma.
+   *
+   * No produto base isto é um no-op: a tabela de eventos não existe lá. O
+   * pipeline chama do mesmo jeito nos dois, e é por isso que este arquivo é
+   * byte a byte idêntico nas duas exportações — toda a diferença mora na
+   * fiação (`live-deps.ts`). Ver ARCHITECTURE.md §13.
+   *
+   * `referencia` é o que torna a gravação idempotente: id do comentário ou
+   * `mid` da mensagem. Sem ela, uma reentrega do Meta contaria a mesma
+   * interação de novo e inflaria o score da pessoa.
+   */
+  registrarInteracao(dados: {
+    accountId: number;
+    contactId: number;
+    tipo: 'comentario' | 'dm_recebida' | 'dm_enviada';
+    automationId: number | null;
+    referencia: string | null;
+    quando: Date;
+  }): Promise<void>;
   publicReply(commentId: string, message: string, token: string): Promise<unknown>;
   privateReply(
     accountIgId: string,
     commentId: string,
+    // Quem vai receber a mensagem. O Meta a endereça pelo commentId, então
+    // este parâmetro não vai para a API — ele existe porque a fiação precisa
+    // saber de quem é a DM antes de despachá-la, e deduzir isso a partir do
+    // comentário depois seria consulta a mais e acoplamento à toa.
+    fromIgId: string,
     text: string,
     buttons: Button[],
     token: string,
+    // Vai no fim, depois do token, porque a base passa a função do Meta direto
+    // para cá — e função com menos parâmetros continua servindo. Pôr no meio
+    // obrigaria um embrulho só para reordenar argumento.
+    //
+    // A Plataforma usa isto para gravar de qual automação o link nasceu. Sem
+    // ele, a compra que volta pelo link não sabe dizer qual oferta a gerou, e
+    // "esta oferta converteu melhor" vira uma pergunta sem resposta.
+    automationId: number | null,
   ): Promise<unknown>;
   sendDm(
     accountIgId: string,
@@ -46,6 +89,7 @@ export type ProcessDeps = {
     text: string,
     buttons: Button[],
     token: string,
+    automationId: number | null,
   ): Promise<unknown>;
   findSentDelivery(
     accountId: number,
@@ -64,6 +108,21 @@ export type ProcessResult =
   | { outcome: 'duplicate'; automationId: number }
   | { outcome: 'throttled'; automationId: number }
   | { outcome: 'error'; automationId: number; error: string };
+
+/**
+ * Registrar histórico não pode impedir a automação de funcionar. Se a gravação
+ * falhar, a DM já saiu ou vai sair do mesmo jeito — perder um evento é ruim,
+ * segurar a entrega por causa de telemetria é muito pior.
+ */
+async function semQuebrar(
+  registrar: () => Promise<void>,
+): Promise<void> {
+  try {
+    await registrar();
+  } catch (erro) {
+    console.error('Falha ao registrar a interação; seguindo.', erro);
+  }
+}
 
 function findMatch(
   automations: Automation[],
@@ -115,7 +174,7 @@ async function runSend(
 
 type Account = { id: number; igUserId: string; accessToken: string };
 
-type GuardsOk = { ok: true; account: Account; automation: Automation };
+type GuardsOk = { ok: true; account: Account; automation: Automation; contactId: number };
 type GuardsFail = { ok: false; result: ProcessResult };
 
 /**
@@ -166,9 +225,9 @@ async function runGuards(
     return { ok: false, result: { outcome: 'throttled', automationId: automation.id } };
   }
 
-  await deps.upsertContact(account.id, opts.fromId, opts.username);
+  const contactId = await deps.upsertContact(account.id, opts.fromId, opts.username);
 
-  return { ok: true, account, automation };
+  return { ok: true, account, automation, contactId };
 }
 
 async function processComment(
@@ -190,11 +249,22 @@ async function processComment(
   );
   if (!guards.ok) return guards.result;
 
-  const { account, automation } = guards;
+  const { account, automation, contactId } = guards;
   const publicStep = automation.steps.find((s) => s.kind === 'public_reply');
   const dmStep = automation.steps.find((s) => s.kind === 'dm');
 
-  return runSend(
+  await semQuebrar(() =>
+    deps.registrarInteracao({
+      accountId: account.id,
+      contactId,
+      tipo: 'comentario',
+      automationId: automation.id,
+      referencia: event.commentId,
+      quando: new Date(),
+    }),
+  );
+
+  const resultado = await runSend(
     automation,
     event.fromId,
     async () => {
@@ -212,9 +282,11 @@ async function processComment(
         await deps.privateReply(
           account.igUserId,
           event.commentId,
+          event.fromId,
           deps.pick(dmStep.variants),
           dmStep.buttons,
           account.accessToken,
+          automation.id,
         );
         return 1;
       }
@@ -222,6 +294,21 @@ async function processComment(
     },
     deps,
   );
+
+  if (resultado.outcome === 'sent') {
+    await semQuebrar(() =>
+      deps.registrarInteracao({
+        accountId: account.id,
+        contactId,
+        tipo: 'dm_enviada',
+        automationId: automation.id,
+        referencia: `${event.commentId}-resposta`,
+        quando: new Date(),
+      }),
+    );
+  }
+
+  return resultado;
 }
 
 // Continuação da conversa: a pessoa respondeu, e a resposta dela abriu a janela
@@ -256,6 +343,22 @@ async function tentarFollowUp(
     return { outcome: 'duplicate', automationId: automation.id };
   }
 
+  // Só aqui, depois da reserva: a pessoa vai mesmo receber a mensagem, então
+  // vale a consulta. É também o momento em que o last_seen_at dela é
+  // atualizado, coisa que antes não acontecia para quem só respondia.
+  const contactId = await deps.upsertContact(account.id, event.fromId, null);
+
+  await semQuebrar(() =>
+    deps.registrarInteracao({
+      accountId: account.id,
+      contactId,
+      tipo: 'dm_recebida',
+      automationId: automation.id,
+      referencia: event.mid,
+      quando: new Date(),
+    }),
+  );
+
   try {
     await deps.sendDm(
       account.igUserId,
@@ -263,7 +366,20 @@ async function tentarFollowUp(
       deps.pick(passo.variants.filter((v) => v.trim().length > 0)),
       passo.buttons,
       account.accessToken,
+      automation.id,
     );
+
+    await semQuebrar(() =>
+      deps.registrarInteracao({
+        accountId: account.id,
+        contactId,
+        tipo: 'dm_enviada',
+        automationId: automation.id,
+        referencia: `fu-${delivery.id}-${passo.position}`,
+        quando: new Date(),
+      }),
+    );
+
     return { outcome: 'sent', automationId: automation.id };
   } catch (error) {
     await deps.releaseFollowUp(delivery.id, passo.position);
@@ -282,6 +398,29 @@ async function processMessage(
   const account = await deps.findAccount(event.accountIgId);
   if (!account) return { outcome: 'ignored', reason: 'conta não conectada' };
 
+  // Depois do anti-loop, para o próprio eco não ocupar uma reserva. Sem `mid`
+  // (payload antigo ou malformado) segue sem a proteção, que é o
+  // comportamento de antes — melhor que recusar a mensagem.
+  if (event.mid && !(await deps.claimMessage(account.id, event.mid))) {
+    return { outcome: 'duplicate', automationId: 0 };
+  }
+
+  const resultadoDaMensagem = await processarMensagem(event, account, deps);
+
+  // Falha solta a reserva: sem isso, a reentrega seguinte seria recusada como
+  // duplicata e a pessoa nunca receberia a continuação.
+  if (event.mid && resultadoDaMensagem.outcome === 'error') {
+    await deps.releaseMessage(account.id, event.mid);
+  }
+
+  return resultadoDaMensagem;
+}
+
+async function processarMensagem(
+  event: MessageEvent,
+  account: Account,
+  deps: ProcessDeps,
+): Promise<ProcessResult> {
   const followUp = await tentarFollowUp(event, account, deps);
   if (followUp) return followUp;
 
@@ -300,10 +439,21 @@ async function processMessage(
   );
   if (!guards.ok) return guards.result;
 
-  const { automation } = guards;
+  const { automation, contactId } = guards;
   const dmStep = automation.steps.find((s) => s.kind === 'dm');
 
-  return runSend(
+  await semQuebrar(() =>
+    deps.registrarInteracao({
+      accountId: account.id,
+      contactId,
+      tipo: 'dm_recebida',
+      automationId: automation.id,
+      referencia: event.mid,
+      quando: new Date(),
+    }),
+  );
+
+  const resultado = await runSend(
     automation,
     event.fromId,
     async () => {
@@ -314,6 +464,7 @@ async function processMessage(
           deps.pick(dmStep.variants),
           dmStep.buttons,
           account.accessToken,
+          automation.id,
         );
         return 1;
       }
@@ -321,6 +472,21 @@ async function processMessage(
     },
     deps,
   );
+
+  if (resultado.outcome === 'sent') {
+    await semQuebrar(() =>
+      deps.registrarInteracao({
+        accountId: account.id,
+        contactId,
+        tipo: 'dm_enviada',
+        automationId: automation.id,
+        referencia: event.mid ? `${event.mid}-resposta` : null,
+        quando: new Date(),
+      }),
+    );
+  }
+
+  return resultado;
 }
 
 export function processEvent(

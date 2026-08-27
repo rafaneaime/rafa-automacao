@@ -30,24 +30,24 @@ export function ConectarBotao() {
 
   return (
     <div className="mt-4 flex flex-col gap-2">
-      <label className="text-sm text-neutral-600">
+      <label className="text-sm text-tinta-media">
         Token de acesso
         <input
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           placeholder="Cole aqui o token gerado no portal do Meta"
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-linha-forte px-3 py-2 text-sm"
         />
       </label>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-tinta-fraca">
         Deixe em branco para usar o token configurado nas variáveis de ambiente.
       </p>
 
       <button
         onClick={conectar}
         disabled={carregando}
-        className="self-start rounded-md bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+        className="self-start rounded-lg bg-tinta px-4 py-2 text-sm font-medium text-papel transition-colors hover:bg-tinta/90 disabled:opacity-50"
       >
         {carregando ? 'Conectando...' : 'Conectar / reconectar conta'}
       </button>
