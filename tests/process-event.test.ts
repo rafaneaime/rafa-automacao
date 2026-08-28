@@ -155,7 +155,7 @@ describe('processEvent com comentário', () => {
       automationId: 10,
       error: 'Error: Meta respondeu 400: token expirado',
     });
-    expect(d.releaseDelivery).toHaveBeenCalledWith(10, 'fulana');
+    expect(d.releaseDelivery).toHaveBeenCalledWith(10, 'fulana', 'post:m1');
   });
 
   it('pula a resposta pública quando não há variações cadastradas', async () => {
@@ -195,7 +195,7 @@ describe('processEvent com comentário', () => {
     });
     expect(d.publicReply).toHaveBeenCalled();
     expect(d.privateReply).not.toHaveBeenCalled();
-    expect(d.releaseDelivery).toHaveBeenCalledWith(10, 'fulana');
+    expect(d.releaseDelivery).toHaveBeenCalledWith(10, 'fulana', 'post:m1');
     expect(d.markDelivery).toHaveBeenCalledWith(
       10, 'fulana', 'error', 'automação publicada sem texto de DM',
     );
@@ -282,7 +282,11 @@ describe('processEvent com mensagem de DM', () => {
       automationId: 10,
       error: 'Error: Meta respondeu 400: token expirado',
     });
-    expect(d.releaseDelivery).toHaveBeenCalledWith(10, 'fulana');
+    expect(d.releaseDelivery).toHaveBeenCalledWith(
+      10,
+      'fulana',
+      expect.stringMatching(/^dia:\d{4}-\d{2}-\d{2}$/),
+    );
   });
 
   it('registra o contato antes de tentar o envio, mesmo quando o envio falha', async () => {
@@ -498,5 +502,40 @@ describe('dedup da mensagem pelo mid', () => {
     const d = deps();
     await processEvent(message(), d);
     expect(d.releaseMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('a reserva de entrega é por ocasião, não para sempre', () => {
+  it('reserva pelo post quando o comentário diz de qual post veio', async () => {
+    const d = deps();
+    await processEvent(comment({ mediaId: 'm1' }), d);
+    expect(d.claimDelivery).toHaveBeenCalledWith(10, 'fulana', 'c1', 'post:m1');
+  });
+
+  it('a mesma pessoa em outro post é outra ocasião', async () => {
+    // O defeito que isto conserta: `dududrumond` comentou em 18/08, recebeu, e
+    // em 27/08 comentou de novo em outro post e não recebeu nada — a reserva
+    // era permanente. As duas chamadas abaixo precisam pedir reservas
+    // diferentes, senão a segunda nunca acontece.
+    const d = deps();
+    await processEvent(comment({ mediaId: 'post-de-agosto' }), d);
+    await processEvent(comment({ mediaId: 'post-de-setembro' }), d);
+
+    const ocasioes = (d.claimDelivery as unknown as { mock: { calls: unknown[][] } })
+      .mock.calls.map((chamada) => chamada[3]);
+
+    expect(ocasioes).toEqual(['post:post-de-agosto', 'post:post-de-setembro']);
+    expect(new Set(ocasioes).size).toBe(2);
+  });
+
+  it('sem post, a ocasião é o dia — para DM não virar metralhadora', async () => {
+    const d = deps();
+    await processEvent(comment({ mediaId: null }), d);
+    expect(d.claimDelivery).toHaveBeenCalledWith(
+      10,
+      'fulana',
+      'c1',
+      expect.stringMatching(/^dia:\d{4}-\d{2}-\d{2}$/),
+    );
   });
 });

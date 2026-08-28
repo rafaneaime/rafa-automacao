@@ -1,8 +1,15 @@
 import { headers } from 'next/headers';
 import { env } from '@/lib/env';
-import { getFirstAccount } from '@/lib/repo/accounts';
-import { resumirBanco, resumoEmLinhas } from '@/lib/repo/contacts';
 import { WEBHOOK_FIELDS } from '@/lib/meta/subscribe';
+import {
+  INTEGRACOES,
+  credencialPresente,
+  estadoDaIntegracao,
+  type EstadoDaIntegracao,
+  type IdDaIntegracao,
+} from '@/lib/painel/saude';
+import { Cartao, Chip, Secao, Vazio } from '@/lib/painel/ui';
+import type { Account } from '@/lib/repo/types';
 import { ConectarBotao } from './conectar-botao';
 
 export const runtime = 'nodejs';
@@ -11,10 +18,67 @@ export const dynamic = 'force-dynamic';
 const CARD = 'rounded-lg border border-linha-forte p-4';
 const VALOR = 'mt-1 block break-all rounded bg-papel p-2 font-mono text-xs';
 
+const ROTULOS_DOS_ESTADOS: Record<EstadoDaIntegracao, string> = {
+  configurado: 'Configurado',
+  faltando: 'Faltando',
+  opcional: 'Opcional',
+};
+
+const CORES_DOS_ESTADOS: Record<EstadoDaIntegracao, string> = {
+  configurado: 'bg-subindo-tenue text-subindo-forte',
+  faltando: 'bg-caindo-tenue text-caindo-forte',
+  opcional: 'bg-frio-tenue text-tinta-media',
+};
+
+type LinhasDoResumo = {
+  contatos: string;
+  automacoes: string;
+  disparos: string;
+  periodo: string;
+};
+
 export default async function ConfiguracaoPage() {
-  const account = await getFirstAccount();
-  const resumo = account ? await resumirBanco(account.id) : null;
-  const linhasResumo = resumo ? resumoEmLinhas(resumo) : null;
+  const bancoInformado = credencialPresente(process.env.DATABASE_URL);
+  let bancoOperacional = bancoInformado;
+  let account: Account | null = null;
+  let linhasResumo: LinhasDoResumo | null = null;
+
+  if (bancoInformado) {
+    try {
+      // O import também fica dentro da guarda: `db.ts` cria o cliente Neon no
+      // carregamento. URL ausente ou inválida não pode derrubar justamente a
+      // tela que existe para contar que a instalação está incompleta.
+      const [{ getFirstAccount }, { resumirBanco, resumoEmLinhas }] =
+        await Promise.all([
+          import('@/lib/repo/accounts'),
+          import('@/lib/repo/contacts'),
+        ]);
+      account = await getFirstAccount();
+      const resumo = account ? await resumirBanco(account.id) : null;
+      linhasResumo = resumo ? resumoEmLinhas(resumo) : null;
+    } catch {
+      bancoOperacional = false;
+      account = null;
+      linhasResumo = null;
+    }
+  }
+
+  const presentes: Record<IdDaIntegracao, boolean> = {
+    instagram: account !== null,
+    banco: bancoOperacional,
+    senha_painel: credencialPresente(process.env.PANEL_PASSWORD),
+    assinatura_meta: credencialPresente(process.env.IG_APP_SECRET),
+    endereco_app: credencialPresente(process.env.APP_URL),
+    hotmart: credencialPresente(process.env.HOTMART_HOTTOK),
+    segredo_cron: credencialPresente(process.env.CRON_SECRET),
+  };
+  const estados = INTEGRACOES.map((integracao) => ({
+    integracao,
+    estado: estadoDaIntegracao(integracao, presentes[integracao.id]),
+  }));
+  const tudoConfigurado = estados.every(
+    ({ estado }) => estado === 'configurado',
+  );
   const host = (await headers()).get('host') ?? 'localhost:3000';
   const protocolo = host.startsWith('localhost') ? 'http' : 'https';
   const callbackUrl = `${protocolo}://${host}/api/webhook`;
@@ -106,12 +170,39 @@ export default async function ConfiguracaoPage() {
         </label>
 
         {protocolo === 'http' && (
-          <p className="mt-3 text-sm text-amber-700">
+          <p className="mt-3 text-sm text-interessado-forte">
             Você está em localhost. O Meta exige HTTPS público — faça o deploy na
             Vercel e volte aqui para copiar a URL de produção.
           </p>
         )}
       </section>
+
+      <Secao
+        titulo="Saúde da instalação"
+        descricao="O que está ligado nesta cópia e o que deixa de funcionar quando falta."
+      >
+        {tudoConfigurado ? (
+          <Vazio compacto>
+            Todas as integrações desta instalação estão configuradas.
+          </Vazio>
+        ) : (
+          <div className="grid gap-3">
+            {estados.map(({ integracao, estado }) => (
+              <Cartao key={integracao.id} destaque={estado === 'faltando'} className="p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-medium">{integracao.nome}</h3>
+                  <Chip cor={CORES_DOS_ESTADOS[estado]}>
+                    {ROTULOS_DOS_ESTADOS[estado]}
+                  </Chip>
+                </div>
+                {estado !== 'configurado' && (
+                  <p className="mt-2 text-sm">{integracao.seFaltar}</p>
+                )}
+              </Cartao>
+            ))}
+          </div>
+        )}
+      </Secao>
     </div>
   );
 }

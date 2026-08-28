@@ -5,11 +5,12 @@ export async function claimDelivery(
   automationId: number,
   igUserId: string,
   commentId: string | null,
+  janela: string,
 ): Promise<boolean> {
   const rows = (await sql`
-    insert into deliveries (automation_id, ig_user_id, comment_id, status)
-    values (${automationId}, ${igUserId}, ${commentId}, 'pending')
-    on conflict (automation_id, ig_user_id) do nothing
+    insert into deliveries (automation_id, ig_user_id, comment_id, status, janela)
+    values (${automationId}, ${igUserId}, ${commentId}, 'pending', ${janela})
+    on conflict (automation_id, ig_user_id, janela) do nothing
     returning id
   `) as { id: number }[];
   return rows.length > 0;
@@ -20,11 +21,14 @@ export async function claimDelivery(
 export async function releaseDelivery(
   automationId: number,
   igUserId: string,
+  janela: string,
 ): Promise<void> {
+  // A janela entra aqui também: sem ela, uma falha numa ocasião apagaria a
+  // reserva de outra — e a pessoa receberia duas vezes pelo mesmo post.
   await sql`
     delete from deliveries
     where automation_id = ${automationId} and ig_user_id = ${igUserId}
-      and status = 'pending'
+      and janela = ${janela} and status = 'pending'
   `;
 }
 

@@ -47,8 +47,19 @@ create table if not exists deliveries (
   status         text not null default 'pending',
   error          text,
   created_at     timestamptz default now(),
-  unique (automation_id, ig_user_id)
+
+  -- A ocasiao desta entrega: `post:<media_id>` quando o comentario diz de qual
+  -- post veio, `dia:<YYYY-MM-DD>` quando nao. Ver src/lib/automations/janela.ts.
+  --
+  -- A unicidade antiga era (automation_id, ig_user_id) e valia PARA SEMPRE:
+  -- quem ja tinha recebido uma automacao uma vez nunca mais recebia, mesmo
+  -- comentando em outro post semanas depois. A migracao 011 desfaz isso em
+  -- quem ja instalou. Aqui a tabela ja nasce certa.
+  janela         text not null default ''
 );
+
+create unique index if not exists deliveries_ocasiao_idx
+  on deliveries (automation_id, ig_user_id, janela);
 
 create table if not exists webhook_events (
   id              serial primary key,

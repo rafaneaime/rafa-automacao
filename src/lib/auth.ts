@@ -19,11 +19,30 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export async function isLoggedIn(): Promise<boolean> {
+  if (!temSenhaConfigurada()) return false;
   const value = (await cookies()).get(SESSION_COOKIE)?.value;
   return value ? safeEqual(value, sessionValue()) : false;
 }
 
+/**
+ * Existe senha de painel configurada nesta instalação?
+ *
+ * Sem `PANEL_PASSWORD`, `env.panelPassword()` lança — e antes disso o painel
+ * respondia com erro 500 e o login não completava, sem nada dizendo por quê.
+ * Quem instalasse e esquecesse essa variável ficava com um app que sobe, abre
+ * a tela de login, e recusa qualquer senha para sempre.
+ *
+ * A saída **não** é deixar entrar. É dizer o que houve, e continuar recusando:
+ * painel sem senha é painel aberto para quem souber o endereço.
+ */
+export function temSenhaConfigurada(): boolean {
+  return (process.env.PANEL_PASSWORD ?? '').trim().length > 0;
+}
+
 export function checkPassword(attempt: string): boolean {
+  // Sem senha configurada não existe senha certa. Recusar aqui é o que impede
+  // o painel de virar público por omissão.
+  if (!temSenhaConfigurada()) return false;
   return safeEqual(attempt, env.panelPassword());
 }
 

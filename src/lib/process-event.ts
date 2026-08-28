@@ -3,6 +3,7 @@ import type { NormalizedEvent, CommentEvent, MessageEvent } from './parse-event'
 import type { Automation } from './repo/types';
 import type { Button } from './meta/messaging';
 import { nextFollowUp } from './automations/follow-up';
+import { janelaDaEntrega } from './automations/janela';
 
 export const RATE_LIMIT_PER_HOUR = 750;
 
@@ -18,8 +19,19 @@ export type ProcessDeps = {
     automationId: number,
     igUserId: string,
     commentId: string | null,
+    /**
+     * A ocasião desta entrega — o post, ou o dia. Ver
+     * `lib/automations/janela.ts`, que explica por que ela existe: sem ela a
+     * reserva era permanente, e quem já tinha recebido uma automação uma vez
+     * nunca mais recebia.
+     */
+    janela: string,
   ): Promise<boolean>;
-  releaseDelivery(automationId: number, igUserId: string): Promise<void>;
+  releaseDelivery(
+    automationId: number,
+    igUserId: string,
+    janela: string,
+  ): Promise<void>;
   markDelivery(
     automationId: number,
     igUserId: string,
@@ -141,6 +153,7 @@ async function runSend(
   igUserId: string,
   send: () => Promise<number>,
   deps: ProcessDeps,
+  janela: string,
 ): Promise<ProcessResult> {
   try {
     const dispatched = await send();
@@ -153,7 +166,7 @@ async function runSend(
       // a condição que releaseDelivery apaga) e só então tenta marcar o
       // erro, para que uma nova tentativa funcione assim que o operador
       // preencher a DM.
-      await deps.releaseDelivery(automation.id, igUserId);
+      await deps.releaseDelivery(automation.id, igUserId, janela);
       const error = 'automação publicada sem texto de DM';
       await deps.markDelivery(automation.id, igUserId, 'error', error);
       return { outcome: 'error', automationId: automation.id, error };
@@ -163,7 +176,7 @@ async function runSend(
   } catch (error) {
     // Solta a reserva: sem isso, um token expirado bloquearia essa pessoa
     // para sempre, mesmo depois de o problema ser corrigido.
-    await deps.releaseDelivery(automation.id, igUserId);
+    await deps.releaseDelivery(automation.id, igUserId, janela);
     return {
       outcome: 'error',
       automationId: automation.id,
@@ -174,7 +187,14 @@ async function runSend(
 
 type Account = { id: number; igUserId: string; accessToken: string };
 
-type GuardsOk = { ok: true; account: Account; automation: Automation; contactId: number };
+type GuardsOk = {
+  ok: true;
+  account: Account;
+  automation: Automation;
+  contactId: number;
+  /** A ocasião desta entrega, decidida junto da reserva e usada para soltá-la. */
+  janela: string;
+};
 type GuardsFail = { ok: false; result: ProcessResult };
 
 /**
@@ -210,7 +230,14 @@ async function runGuards(
     return { ok: false, result: { outcome: 'ignored', reason: 'nenhuma automação casou' } };
   }
 
-  const claimed = await deps.claimDelivery(automation.id, opts.fromId, opts.commentId);
+  // A ocasião: o post quando o comentário diz de qual veio, o dia quando não.
+  const janela = janelaDaEntrega(opts.mediaId, new Date());
+  const claimed = await deps.claimDelivery(
+    automation.id,
+    opts.fromId,
+    opts.commentId,
+    janela,
+  );
   if (!claimed) {
     return { ok: false, result: { outcome: 'duplicate', automationId: automation.id } };
   }
@@ -227,7 +254,7 @@ async function runGuards(
 
   const contactId = await deps.upsertContact(account.id, opts.fromId, opts.username);
 
-  return { ok: true, account, automation, contactId };
+  return { ok: true, account, automation, contactId, janela };
 }
 
 async function processComment(
@@ -249,7 +276,7 @@ async function processComment(
   );
   if (!guards.ok) return guards.result;
 
-  const { account, automation, contactId } = guards;
+  const { account, automation, contactId, janela } = guards;
   const publicStep = automation.steps.find((s) => s.kind === 'public_reply');
   const dmStep = automation.steps.find((s) => s.kind === 'dm');
 
@@ -293,6 +320,7 @@ async function processComment(
       return 0;
     },
     deps,
+    janela,
   );
 
   if (resultado.outcome === 'sent') {
@@ -439,7 +467,7 @@ async function processarMensagem(
   );
   if (!guards.ok) return guards.result;
 
-  const { automation, contactId } = guards;
+  const { automation, contactId, janela } = guards;
   const dmStep = automation.steps.find((s) => s.kind === 'dm');
 
   await semQuebrar(() =>
@@ -471,6 +499,7 @@ async function processarMensagem(
       return 0;
     },
     deps,
+    janela,
   );
 
   if (resultado.outcome === 'sent') {

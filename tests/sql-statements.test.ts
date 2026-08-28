@@ -119,6 +119,10 @@ describe('splitSqlStatements', () => {
   // comandos existem, é os dois separadores concordarem: no dia em que
   // deixarem de concordar, é porque o schema ganhou aspas, comentário ou
   // corpo de função que o ingênuo cortaria no meio.
+  // O split ingênuo serve de referência independente, e só funciona enquanto o
+  // schema não tiver `;` dentro de comentário ou string. Se este teste falhar
+  // depois de você editar `db/schema.sql`, confira primeiro se foi isso: o
+  // parser está certo, e o comentário é que precisa perder o ponto e vírgula.
   it('separa o schema atual igual ao split ingênuo', () => {
     const schema = readFileSync('db/schema.sql', 'utf8');
     const antes = schema

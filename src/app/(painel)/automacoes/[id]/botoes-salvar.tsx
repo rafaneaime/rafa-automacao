@@ -17,7 +17,7 @@ export function BotoesSalvar({ publicada }: { publicada: boolean }) {
         name="acao"
         value="rascunho"
         disabled={pending}
-        className="rounded-md border border-linha-forte px-4 py-2 text-sm disabled:opacity-50"
+        className="rounded-lg border border-linha-forte bg-superficie px-4 py-2 text-sm font-medium transition-colors hover:border-tinta disabled:opacity-50"
       >
         {pending && acao === 'rascunho' ? 'Salvando...' : 'Salvar rascunho'}
       </button>
@@ -26,7 +26,11 @@ export function BotoesSalvar({ publicada }: { publicada: boolean }) {
         value="publicar"
         disabled={pending}
         className={`rounded-lg px-4 py-2 text-sm font-medium text-papel transition-colors disabled:opacity-50 ${
-          publicada ? 'bg-green-700' : 'bg-tinta'
+          // O guia da imersao manda a pessoa procurar exatamente isto: o
+          // botao ficar verde escrito "Publicar de novo". A cor vem da
+          // paleta, e nao de um verde solto do Tailwind, mas o sinal
+          // continua o mesmo.
+          publicada ? 'bg-subindo-forte' : 'bg-tinta'
         }`}
       >
         {pending && acao === 'publicar'

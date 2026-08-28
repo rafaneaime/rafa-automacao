@@ -72,7 +72,7 @@ export default async function EditorPage({
       )}
 
       {ok === 'publicada' && (
-        <p className="mt-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-subindo-forte">
+        <p className="mt-4 rounded-md border border-subindo-tenue bg-subindo-tenue px-3 py-2 text-sm text-subindo-forte">
           Publicada. A partir de agora ela dispara sozinha, a cada comentário que
           casar com as palavras-chave.
         </p>
@@ -247,7 +247,7 @@ export default async function EditorPage({
 
       <form action={excluirAutomacao} className="mt-8">
         <input type="hidden" name="id" value={automacao.id} />
-        <button className="text-sm text-red-600 hover:underline">
+        <button className="text-sm text-caindo-forte hover:underline">
           Excluir automação
         </button>
       </form>
