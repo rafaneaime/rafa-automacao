@@ -234,3 +234,53 @@ export function Botao({
     </button>
   );
 }
+
+/**
+ * Nome de usuário do Instagram, clicável quando dá para clicar.
+ *
+ * O @ aparece em seis telas e em nenhuma delas dava para ir ao perfil — quem
+ * queria olhar quem era a pessoa tinha que copiar o nome e colar no navegador.
+ *
+ * **O nome vem de fora**, pela API do Meta, e vai virar `href`. Por isso ele é
+ * conferido contra o alfabeto que o Instagram realmente permite antes de virar
+ * link: letras, números, ponto e sublinhado. Um nome com `/`, `:` ou `?`
+ * montaria uma URL para outro lugar, e o link do painel levaria a pessoa para
+ * onde alguém de fora escolheu. Fora do formato, mostra o texto e não linka —
+ * a tela não perde nada e ninguém é levado a lugar nenhum.
+ *
+ * Sem `username` sobra o id numérico, que não forma endereço de perfil. Aí
+ * também é só texto.
+ */
+const USUARIO_DO_INSTAGRAM = /^[A-Za-z0-9._]{1,30}$/;
+
+export function PerfilDoInstagram({
+  username,
+  igUserId,
+  rotulo,
+  className = '',
+}: {
+  username: string | null;
+  igUserId: string;
+  /** Texto do link. Padrão: o próprio @. A lista de contatos usa só um ícone,
+   *  porque lá o nome já leva para o perfil interno. */
+  rotulo?: string;
+  className?: string;
+}) {
+  if (!username || !USUARIO_DO_INSTAGRAM.test(username)) {
+    // Sem link, o ícone não significa nada e vira ruído na linha.
+    if (rotulo !== undefined) return null;
+    return <span className={className}>{username ? `@${username}` : igUserId}</span>;
+  }
+
+  return (
+    <a
+      href={`https://www.instagram.com/${username}/`}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      title={`Abrir @${username} no Instagram`}
+      className={`underline decoration-linha underline-offset-2 hover:decoration-tinta ${className}`}
+    >
+      {rotulo ?? `@${username}`}
+    </a>
+  );
+}

@@ -1,3 +1,5 @@
+import type { TipoDeGatilho } from '../repo/types';
+
 export type PassoParaValidar = {
   kind: 'public_reply' | 'dm' | 'follow_up';
   variants: string[];
@@ -16,7 +18,7 @@ const SEM_DM = 'A automação não tem texto de DM. Sem isso ela não envia nada
 // não é o único caminho que grava automações — o criador por linguagem natural
 // do produto pago usa as mesmas funções de repositório.
 export function validarPublicacao(
-  _triggerType: 'comment' | 'dm',
+  _triggerType: TipoDeGatilho,
   steps: PassoParaValidar[],
 ): string | null {
   const dm = steps.find((s) => s.kind === 'dm');

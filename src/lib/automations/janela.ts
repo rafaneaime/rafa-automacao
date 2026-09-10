@@ -33,8 +33,17 @@
  * - **o post**, quando o gatilho é comentário e sabemos de qual post ele veio.
  *   Cinco comentários no mesmo post são uma ocasião; um comentário no post da
  *   semana seguinte é outra.
- * - **o dia**, quando não há post — DM como gatilho, ou comentário cujo
- *   payload não trouxe a mídia. Manda uma vez por dia e não vira metralhadora.
+ * - **o Story**, quando o gatilho é resposta de Story. Mesma ideia: cinco
+ *   respostas ao mesmo Story são uma ocasião, o Story de amanhã é outra. Story
+ *   e post compartilham o prefixo `post:` porque compartilham o espaço de ids
+ *   de mídia do Instagram — são disjuntos entre si por construção.
+ * - **o dia**, quando não há post nem Story — DM como gatilho, ou comentário
+ *   cujo payload não trouxe a mídia. Manda uma vez por dia e não vira
+ *   metralhadora.
+ *
+ * Uma automação de **DM** fica sempre no dia, mesmo quando a mensagem que a
+ * acionou era resposta de um Story. Ela sempre funcionou assim, e quem quiser
+ * uma entrega por Story tem a automação de Story para isso.
  *
  * O dia é fronteira grosseira de propósito. A alternativa seria uma janela em
  * horas, que obrigaria a escolher um número sem nada que o justifique; o dia

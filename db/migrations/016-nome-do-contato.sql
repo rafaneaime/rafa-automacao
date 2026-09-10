@@ -1,0 +1,23 @@
+-- O nome da pessoa, quando ela mesma escreve num formulario do site.
+--
+-- Ate aqui o unico nome que existia era `username`, o arroba do Instagram.
+-- Serve para achar a pessoa, nao para falar com ela: "oi rosangelarodrigues8194"
+-- nao e como se comeca uma mensagem. O formulario traz o nome de verdade.
+--
+-- Nao e identidade, e por isso nao cabe em `identities`: aquela tabela tem
+-- unique em (conta, tipo, valor), e dois "Joao Silva" diferentes colidiriam.
+-- Nome e atributo do contato, e mora com ele.
+--
+-- BASE, e nao Plataforma, apesar de so o codigo da Plataforma ler esta coluna.
+-- `contacts` e tabela do `db/schema.sql`, e `tests/migracoes-da-base.test.ts`
+-- exige que migracao que altera tabela da base va para a base. Aquele guarda
+-- nasceu da migracao 011, que alterava `deliveries` estando classificada como
+-- Plataforma e teria quebrado todo disparo de DM de todo aluno. Uma coluna
+-- anulavel que a base nunca le e inofensiva; abrir excecao no guarda nao seria.
+--
+-- A coluna esta tambem no `create table contacts` do `db/schema.sql`, de
+-- proposito: a migracao acerta quem ja instalou, o create table faz a
+-- instalacao nova nascer certa, e as duas terminam com o mesmo schema. Foi
+-- exatamente a divergencia entre esses dois caminhos que quebrou a atualizacao
+-- da Amanda em 04/09.
+alter table contacts add column if not exists nome text;

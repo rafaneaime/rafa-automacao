@@ -96,7 +96,17 @@ export default async function EditorPage({
             <select name="gatilho" defaultValue={automacao.triggerType} className={CAMPO}>
               <option value="comment">Quando alguém comenta</option>
               <option value="dm">Quando alguém manda DM</option>
+              <option value="story_reply">Quando alguém responde um Story</option>
             </select>
+            {/*
+              Story não tem comentário: a resposta chega como DM. Sem esta
+              frase, "responde um Story" e "manda DM" parecem a mesma coisa
+              escrita de dois jeitos, e a pessoa escolhe no chute.
+            */}
+            <p className="text-sm text-tinta-media">
+              Resposta de Story chega como mensagem direta. A automação de
+              Story pega só quem veio de um Story; a de DM pega o resto.
+            </p>
 
             {midias.length > 0 ? (
               <select name="mediaId" defaultValue={automacao.mediaId ?? ''} className={CAMPO}>

@@ -1,4 +1,4 @@
-import { sql } from '../db';
+﻿import { sql } from '../db';
 import type { Contact } from './types';
 
 /**
@@ -25,13 +25,14 @@ export async function upsertContact(
 
 export async function listContacts(accountId: number): Promise<Contact[]> {
   const rows = (await sql`
-    select id, ig_user_id, username, first_seen_at, last_seen_at
+    select id, ig_user_id, username, nome, first_seen_at, last_seen_at
     from contacts where account_id = ${accountId}
     order by last_seen_at desc
   `) as {
     id: number;
     ig_user_id: string;
     username: string | null;
+    nome: string | null;
     first_seen_at: Date;
     last_seen_at: Date;
   }[];
@@ -40,6 +41,7 @@ export async function listContacts(accountId: number): Promise<Contact[]> {
     id: r.id,
     igUserId: r.ig_user_id,
     username: r.username,
+    nome: r.nome,
     firstSeenAt: r.first_seen_at,
     lastSeenAt: r.last_seen_at,
   }));
@@ -50,13 +52,14 @@ export async function acharContato(
   id: number,
 ): Promise<Contact | null> {
   const rows = (await sql`
-    select id, ig_user_id, username, first_seen_at, last_seen_at
+    select id, ig_user_id, username, nome, first_seen_at, last_seen_at
     from contacts
     where account_id = ${accountId} and id = ${id}
   `) as {
     id: number;
     ig_user_id: string;
     username: string | null;
+    nome: string | null;
     first_seen_at: Date;
     last_seen_at: Date;
   }[];
@@ -67,6 +70,7 @@ export async function acharContato(
         id: row.id,
         igUserId: row.ig_user_id,
         username: row.username,
+        nome: row.nome,
         firstSeenAt: row.first_seen_at,
         lastSeenAt: row.last_seen_at,
       }
@@ -169,3 +173,5 @@ export async function resumirBanco(accountId: number): Promise<ResumoDoBanco> {
     ultimaInteracao: row?.ultima_interacao ?? null,
   };
 }
+
+

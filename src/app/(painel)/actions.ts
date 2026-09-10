@@ -12,6 +12,7 @@ import {
 import { AutomacaoInvalidaError } from '@/lib/automations/validation';
 import { mesclarPassos } from '@/lib/automations/passos';
 import type { MatchMode } from '@/lib/matching';
+import type { TipoDeGatilho } from '@/lib/repo/types';
 import { separarVariacoes } from '@/lib/automations/variacoes';
 
 /**
@@ -20,12 +21,25 @@ import { separarVariacoes } from '@/lib/automations/variacoes';
  */
 const linhas = separarVariacoes;
 
+/**
+ * O gatilho vem de um `<select>`, e o que chega aqui é texto do navegador.
+ *
+ * Lista fechada, e `comment` quando não reconhecer: um valor inventado no
+ * formulário não pode virar automação que nunca dispara, calada. Estava
+ * escrito duas vezes como um ternário `=== 'dm'` — que, com o terceiro
+ * gatilho, transformaria "responde um Story" em "comentário" na hora de
+ * salvar, sem erro nenhum aparecer.
+ */
+function lerGatilho(valor: FormDataEntryValue | null): TipoDeGatilho {
+  return valor === 'dm' || valor === 'story_reply' ? valor : 'comment';
+}
+
 export async function criarAutomacao(formData: FormData) {
   const account = await getFirstAccount();
   if (!account) redirect('/configuracao');
 
   const nome = String(formData.get('nome') ?? '').trim() || 'Nova automação';
-  const gatilho = formData.get('gatilho') === 'dm' ? 'dm' : 'comment';
+  const gatilho = lerGatilho(formData.get('gatilho'));
 
   const id = await createAutomation(account.id, nome, gatilho);
   redirect(`/automacoes/${id}`);
@@ -80,7 +94,7 @@ export async function salvarAutomacao(formData: FormData) {
       {
         name: String(formData.get('nome') ?? '').trim() || 'Sem nome',
         status: publicar && !publicarSemDm ? 'published' : 'draft',
-        triggerType: formData.get('gatilho') === 'dm' ? 'dm' : 'comment',
+        triggerType: lerGatilho(formData.get('gatilho')),
         mediaId: mediaId.length > 0 ? mediaId : null,
         keywords: String(formData.get('palavras') ?? '')
           .split(',')

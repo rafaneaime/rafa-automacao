@@ -34,6 +34,7 @@ create table if not exists contacts (
   account_id    int references accounts(id) on delete cascade,
   ig_user_id    text not null,
   username      text,
+  nome          text,
   first_seen_at timestamptz default now(),
   last_seen_at  timestamptz default now(),
   unique (account_id, ig_user_id)
@@ -58,8 +59,20 @@ create table if not exists deliveries (
   janela         text not null default ''
 );
 
-create unique index if not exists deliveries_ocasiao_idx
-  on deliveries (automation_id, ig_user_id, janela);
+-- O índice de (automation_id, ig_user_id, janela) NÃO mora aqui. Ele é criado
+-- pela migração 011, junto da coluna `janela`, e o motivo é ordem:
+--
+-- o `db-setup` aplica este arquivo ANTES das migrações. Numa instalação que já
+-- existia antes da 011, `create table if not exists deliveries` não faz nada
+-- (a tabela já está lá, sem a coluna), e o índice logo abaixo tentava usar uma
+-- coluna que só a migração 011 acrescenta — três linhas depois, tarde demais.
+--
+-- O resultado era o build inteiro morrer com `column "janela" does not exist`,
+-- em toda instalação anterior à 011. Instalação nova passava, porque aí o
+-- `create table` acima roda de verdade e já traz a coluna. Um defeito que só
+-- aparecia em quem já era cliente.
+--
+-- Provado na instalação da Amanda, atualizando para a Plataforma em 04/09.
 
 create table if not exists webhook_events (
   id              serial primary key,

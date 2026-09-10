@@ -1,5 +1,5 @@
 import { sql } from '../db';
-import type { Automation, AutomationStep } from './types';
+import type { Automation, AutomationStep, TipoDeGatilho } from './types';
 import {
   validarPublicacao,
   AutomacaoInvalidaError,
@@ -10,7 +10,7 @@ type AutomationRow = {
   account_id: number;
   name: string;
   status: 'draft' | 'published';
-  trigger_type: 'comment' | 'dm';
+  trigger_type: TipoDeGatilho;
   media_id: string | null;
   keywords: string[];
   match_mode: Automation['matchMode'];
@@ -59,7 +59,7 @@ async function attachSteps(rows: AutomationRow[]): Promise<Automation[]> {
 
 export async function findPublishedAutomations(
   accountId: number,
-  trigger: 'comment' | 'dm',
+  trigger: TipoDeGatilho,
 ): Promise<Automation[]> {
   const rows = (await sql`
     select id, account_id, name, status, trigger_type, media_id, keywords, match_mode
@@ -101,7 +101,7 @@ export async function getAutomation(id: number): Promise<Automation | null> {
 export async function createAutomation(
   accountId: number,
   name: string,
-  triggerType: 'comment' | 'dm',
+  triggerType: TipoDeGatilho,
 ): Promise<number> {
   const rows = (await sql`
     insert into automations (account_id, name, trigger_type)
@@ -124,7 +124,7 @@ export async function createAutomation(
 export type AutomationFields = {
   name: string;
   status: 'draft' | 'published';
-  triggerType: 'comment' | 'dm';
+  triggerType: TipoDeGatilho;
   mediaId: string | null;
   keywords: string[];
   matchMode: Automation['matchMode'];

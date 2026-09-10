@@ -63,9 +63,29 @@ function conferir(arquivos: Arquivo[]): void {
   process.exit(1);
 }
 
+/**
+ * Com `--se-houver`, faltar banco é aviso, não morte.
+ *
+ * Quem roda `npm run db:setup` na mão pediu para aplicar o schema: se não há
+ * banco, isso falhou, e falhar em silêncio esconderia o problema. Já o `build`
+ * roda este script de passagem, antes do `next build`. Ali, faltar
+ * `DATABASE_URL` não deve derrubar a construção inteira: é melhor o site subir
+ * e a tela de diagnóstico dizer "falta o banco" do que a pessoa receber um
+ * deploy vermelho e nenhuma tela onde ler o motivo.
+ */
+const SE_HOUVER = process.argv.includes('--se-houver');
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
+    if (SE_HOUVER) {
+      console.warn(
+        'DATABASE_URL não está definida; pulando o schema.\n' +
+          'O site vai subir, mas sem banco. Defina DATABASE_URL nas variáveis de\n' +
+          'ambiente e faça um novo deploy — a tela inicial do painel repete isso.',
+      );
+      return;
+    }
     console.error('DATABASE_URL não está definida. Preencha o .env antes de rodar.');
     process.exit(1);
   }

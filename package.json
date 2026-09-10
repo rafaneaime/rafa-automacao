@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "tsx scripts/db-setup.ts && next build",
+    "build": "tsx scripts/db-setup.ts --se-houver && next build",
     "start": "next start",
     "db:setup": "tsx scripts/db-setup.ts",
     "simulate:comment": "tsx scripts/simulate-comment.ts",

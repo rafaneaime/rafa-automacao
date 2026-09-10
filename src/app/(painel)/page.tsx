@@ -11,6 +11,13 @@ import {
   Vazio,
 } from '@/lib/painel/ui';
 import { criarAutomacao } from './actions';
+import type { TipoDeGatilho } from '@/lib/repo/types';
+
+const GATILHO: Record<TipoDeGatilho, string> = {
+  comment: 'Comentário',
+  dm: 'DM',
+  story_reply: 'Resposta de Story',
+};
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -75,7 +82,7 @@ export default async function AutomacoesPage() {
                   {a.name}
                 </Link>
                 <p className="mt-0.5 text-sm text-tinta-media">
-                  {a.triggerType === 'comment' ? 'Comentário' : 'DM'}
+                  {GATILHO[a.triggerType] ?? 'DM'}
                   {' · '}
                   {a.matchMode === 'any'
                     ? 'qualquer texto'

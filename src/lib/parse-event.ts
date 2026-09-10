@@ -8,6 +8,20 @@ export type CommentEvent = {
   mediaId: string | null;
 };
 
+/**
+ * De qual Story esta mensagem é resposta.
+ *
+ * Story não tem comentário: o que a pessoa faz é **responder**, e a resposta
+ * chega como mensagem direta, igual a qualquer outra. A única coisa que
+ * distingue as duas é este campo, que o Meta manda em `message.reply_to.story`
+ * — e que este leitor jogava fora.
+ *
+ * O `id` pode vir sem a `url` e vice-versa, então os dois são opcionais. O que
+ * não é opcional é o objeto existir: a presença dele é o sinal de que veio de
+ * um Story, mesmo quando o Meta não conta qual.
+ */
+export type RespostaDeStory = { id: string | null; url: string | null };
+
 export type MessageEvent = {
   kind: 'message';
   accountIgId: string;
@@ -20,6 +34,8 @@ export type MessageEvent = {
    * malformado, e aí quem consome decide o que fazer.
    */
   mid: string | null;
+  /** `null` quando é DM comum. Ver `RespostaDeStory`. */
+  story: RespostaDeStory | null;
 };
 
 export type NormalizedEvent = CommentEvent | MessageEvent;
@@ -73,7 +89,23 @@ function parseMessaging(accountIgId: string, item: unknown): MessageEvent | null
   const text = asString(message.text);
   if (!fromId || text === null) return null;
 
-  return { kind: 'message', accountIgId, fromId, text, mid: asString(message.mid) };
+  return {
+    kind: 'message',
+    accountIgId,
+    fromId,
+    text,
+    mid: asString(message.mid),
+    story: lerRespostaDeStory(message),
+  };
+}
+
+function lerRespostaDeStory(message: Record<string, unknown>): RespostaDeStory | null {
+  const replyTo = asRecord(message.reply_to);
+  const story = replyTo ? asRecord(replyTo.story) : null;
+  if (!story) return null;
+
+  // O objeto vazio também conta: ele já diz "veio de um Story".
+  return { id: asString(story.id), url: asString(story.url) };
 }
 
 export function parseEvents(payload: unknown): NormalizedEvent[] {

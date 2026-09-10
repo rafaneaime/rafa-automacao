@@ -1,6 +1,6 @@
 import { matchesKeyword } from './matching';
-import type { NormalizedEvent, CommentEvent, MessageEvent } from './parse-event';
-import type { Automation } from './repo/types';
+import type { NormalizedEvent, CommentEvent, MessageEvent, RespostaDeStory } from './parse-event';
+import type { Automation, TipoDeGatilho } from './repo/types';
 import type { Button } from './meta/messaging';
 import { nextFollowUp } from './automations/follow-up';
 import { janelaDaEntrega } from './automations/janela';
@@ -13,7 +13,7 @@ export type ProcessDeps = {
   ): Promise<{ id: number; igUserId: string; accessToken: string } | null>;
   findPublishedAutomations(
     accountId: number,
-    trigger: 'comment' | 'dm',
+    trigger: TipoDeGatilho,
   ): Promise<Automation[]>;
   claimDelivery(
     automationId: number,
@@ -69,10 +69,16 @@ export type ProcessDeps = {
   registrarInteracao(dados: {
     accountId: number;
     contactId: number;
-    tipo: 'comentario' | 'dm_recebida' | 'dm_enviada';
+    tipo: 'comentario' | 'dm_recebida' | 'dm_enviada' | 'resposta_de_story';
     automationId: number | null;
     referencia: string | null;
     quando: Date;
+    /**
+     * Detalhe do que aconteceu, para a jornada. Hoje só a resposta de Story
+     * usa, guardando de qual Story ela veio — é o que transforma "Respondeu um
+     * Story" numa linha em que dá para clicar.
+     */
+    detalhe?: Record<string, string>;
   }): Promise<void>;
   publicReply(commentId: string, message: string, token: string): Promise<unknown>;
   privateReply(
@@ -207,7 +213,14 @@ async function runGuards(
     fromId: string;
     accountIgId: string;
     ignoredSelfReason: string;
-    trigger: 'comment' | 'dm';
+    /**
+     * Em ordem de preferência. Uma resposta de Story procura primeiro uma
+     * automação feita para Story e, não achando, cai na de DM — que é o que já
+     * acontecia antes deste campo existir. Sem essa queda, quem hoje responde
+     * resposta de Story com uma automação de DM veria ela parar de funcionar
+     * do nada.
+     */
+    triggers: TipoDeGatilho[];
     text: string;
     mediaId: string | null;
     commentId: string | null;
@@ -224,14 +237,28 @@ async function runGuards(
     return { ok: false, result: { outcome: 'ignored', reason: 'conta não conectada' } };
   }
 
-  const automations = await deps.findPublishedAutomations(account.id, opts.trigger);
-  const automation = findMatch(automations, opts.text, opts.mediaId);
+  let automation: Automation | undefined;
+  for (const trigger of opts.triggers) {
+    const automations = await deps.findPublishedAutomations(account.id, trigger);
+    automation = findMatch(automations, opts.text, opts.mediaId);
+    if (automation) break;
+  }
   if (!automation) {
     return { ok: false, result: { outcome: 'ignored', reason: 'nenhuma automação casou' } };
   }
 
-  // A ocasião: o post quando o comentário diz de qual veio, o dia quando não.
-  const janela = janelaDaEntrega(opts.mediaId, new Date());
+  // A ocasião: o post do comentário, o Story da resposta, o dia quando não há
+  // nem um nem outro.
+  //
+  // Uma automação de **DM** nunca usa a mídia como ocasião, mesmo quando a
+  // mensagem veio de um Story. Ela sempre entregou uma vez por dia, e mudar
+  // isso de lado faria quem responde dois Stories seus num dia passar a receber
+  // duas DMs — mudança de comportamento em automação que ninguém pediu para
+  // mexer. Quem quiser uma entrega por Story cria uma automação de Story.
+  const janela = janelaDaEntrega(
+    automation.triggerType === 'dm' ? null : opts.mediaId,
+    new Date(),
+  );
   const claimed = await deps.claimDelivery(
     automation.id,
     opts.fromId,
@@ -266,7 +293,7 @@ async function processComment(
       fromId: event.fromId,
       accountIgId: event.accountIgId,
       ignoredSelfReason: 'comentário da própria conta',
-      trigger: 'comment',
+      triggers: ['comment'],
       text: event.text,
       mediaId: event.mediaId,
       commentId: event.commentId,
@@ -444,6 +471,17 @@ async function processMessage(
   return resultadoDaMensagem;
 }
 
+/**
+ * Só campos preenchidos: chave com string vazia vira coluna vazia na jornada,
+ * e "Respondeu um Story →" sem destino é pior que "Respondeu um Story".
+ */
+function detalheDoStory(story: RespostaDeStory): Record<string, string> {
+  const detalhe: Record<string, string> = {};
+  if (story.id) detalhe.storyId = story.id;
+  if (story.url) detalhe.storyUrl = story.url;
+  return detalhe;
+}
+
 async function processarMensagem(
   event: MessageEvent,
   account: Account,
@@ -457,9 +495,13 @@ async function processarMensagem(
       fromId: event.fromId,
       accountIgId: event.accountIgId,
       ignoredSelfReason: 'mensagem da própria conta',
-      trigger: 'dm',
+      triggers: event.story ? ['story_reply', 'dm'] : ['dm'],
       text: event.text,
-      mediaId: null,
+      // O Story faz para a resposta o que o post faz para o comentário: ele é
+      // a ocasião. Sem isso, quem respondesse dois Stories no mesmo dia
+      // receberia a automação uma vez só — e a reserva do dia anterior calaria
+      // o Story de hoje. Ver `lib/automations/janela.ts`.
+      mediaId: event.story?.id ?? null,
       commentId: null,
       username: null,
     },
@@ -474,10 +516,11 @@ async function processarMensagem(
     deps.registrarInteracao({
       accountId: account.id,
       contactId,
-      tipo: 'dm_recebida',
+      tipo: event.story ? 'resposta_de_story' : 'dm_recebida',
       automationId: automation.id,
       referencia: event.mid,
       quando: new Date(),
+      ...(event.story ? { detalhe: detalheDoStory(event.story) } : {}),
     }),
   );
 

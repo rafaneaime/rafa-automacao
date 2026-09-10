@@ -17,12 +17,23 @@ export type AutomationStep = {
   buttons: Button[];
 };
 
+/**
+ * O que faz a automação disparar.
+ *
+ * `story_reply` é resposta de Story — que chega como mensagem direta, porque
+ * Story não tem comentário. Ela existe separada de `dm` para que a pessoa possa
+ * responder só quem veio do Story, sem pegar toda a caixa de entrada.
+ */
+export const GATILHOS = ['comment', 'dm', 'story_reply'] as const;
+
+export type TipoDeGatilho = (typeof GATILHOS)[number];
+
 export type Automation = {
   id: number;
   accountId: number;
   name: string;
   status: 'draft' | 'published';
-  triggerType: 'comment' | 'dm';
+  triggerType: TipoDeGatilho;
   mediaId: string | null;
   keywords: string[];
   matchMode: MatchMode;
@@ -33,6 +44,14 @@ export type Contact = {
   id: number;
   igUserId: string;
   username: string | null;
+  /**
+   * O nome que a própria pessoa escreveu num formulário do site.
+   *
+   * Diferente de `username`, que é o arroba do Instagram: serve para achar a
+   * pessoa, não para falar com ela. "Oi rosangelarodrigues8194" não é como se
+   * começa uma mensagem.
+   */
+  nome: string | null;
   firstSeenAt: Date;
   lastSeenAt: Date;
 };

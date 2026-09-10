@@ -1,8 +1,12 @@
 import { env } from '@/lib/env';
-export const runtime = 'nodejs';
+import { coletaEmSiteAtiva } from '@/lib/repo/coleta-ativa';
 
-export default function PrivacidadePage() {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export default async function PrivacidadePage() {
   const email = env.emailContato();
+  const coletaEmSite = await coletaEmSiteAtiva();
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 text-tinta">
@@ -57,11 +61,60 @@ export default function PrivacidadePage() {
           </li>
         </ul>
         <p className="text-sm leading-relaxed text-tinta-media">
-          Não é coletado nenhum dado além do que chega através da própria API
-          do Instagram nesses eventos — não há rastreamento em outras partes
-          do Instagram, em outros sites, nem coleta por formulários externos.
+          {coletaEmSite ? (
+            <>
+              Além disso, esta instalação registra visitas em um site próprio do
+              operador, quando ele instalou o script de coleta nesse site. Não há
+              rastreamento em outras partes do Instagram nem em sites de
+              terceiros.
+            </>
+          ) : (
+            <>
+              Não é coletado nenhum dado além do que chega através da própria API
+              do Instagram nesses eventos — não há rastreamento em outras partes
+              do Instagram, em outros sites, nem coleta por formulários externos.
+            </>
+          )}
         </p>
       </section>
+
+      {coletaEmSite && (
+        <section className="mb-8">
+          <h2 className="mb-2 text-lg font-medium">Visitas no site do operador</h2>
+          <p className="mb-3 text-sm leading-relaxed text-tinta-media">
+            Em sites próprios onde o operador instalou o script de coleta, esta
+            aplicação registra, <strong>somente depois do consentimento</strong>:
+          </p>
+          <ul className="mb-3 list-disc space-y-1 pl-5 text-sm leading-relaxed text-tinta-media">
+            <li>
+              um identificador aleatório guardado no navegador, criado por esta
+              aplicação e não derivado de nenhum dado da pessoa;
+            </li>
+            <li>
+              o endereço das páginas visitadas, sem parâmetros de consulta — só
+              os de campanha (<code>utm_*</code>, <code>sck</code>,{' '}
+              <code>src</code>) são preservados;
+            </li>
+            <li>
+              o tipo do que aconteceu: visita, visualização de produto, chegada
+              ao checkout ou cadastro em formulário.
+            </li>
+          </ul>
+          <p className="mb-3 text-sm leading-relaxed text-tinta-media">
+            <strong>Não são coletados</strong> nome, e-mail, telefone nem o
+            conteúdo de formulários: o cadastro registra que alguém se cadastrou,
+            nunca quem. Também não são guardados endereço IP, navegador nem
+            página de origem.
+          </p>
+          <p className="text-sm leading-relaxed text-tinta-media">
+            Quando a pessoa chega ao site por um link enviado em mensagem do
+            Instagram, esse histórico de visitas passa a ser associado ao contato
+            dela — ou seja, deixa de ser anônimo. É por isso que a coleta só
+            começa depois do consentimento, e a pessoa pode retirá-lo a qualquer
+            momento pelo mesmo aviso do site.
+          </p>
+        </section>
+      )}
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Por que esses dados são usados</h2>

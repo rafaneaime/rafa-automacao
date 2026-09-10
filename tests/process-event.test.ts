@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { processEvent, RATE_LIMIT_PER_HOUR } from '@/lib/process-event';
 import type { ProcessDeps } from '@/lib/process-event';
 import type { Automation } from '@/lib/repo/types';
-import type { CommentEvent, MessageEvent } from '@/lib/parse-event';
+import type { CommentEvent, MessageEvent, RespostaDeStory } from '@/lib/parse-event';
 
 const ACCOUNT = { id: 1, igUserId: 'conta', accessToken: 'tok' };
 
@@ -205,6 +205,7 @@ describe('processEvent com comentário', () => {
 describe('processEvent com mensagem de DM', () => {
   const message: MessageEvent = {
     kind: 'message',
+    story: null,
     mid: 'mid-1',
     accountIgId: 'conta',
     fromId: 'fulana',
@@ -309,9 +310,120 @@ describe('processEvent com mensagem de DM', () => {
   });
 });
 
+/**
+ * Resposta de Story chega como DM; o que muda é para onde ela olha primeiro.
+ *
+ * A queda para `dm` não é conveniência: sem ela, quem já responde resposta de
+ * Story com uma automação de DM veria ela parar de funcionar no dia em que
+ * este código subisse, sem ter mexido em nada.
+ */
+describe('processEvent com resposta de Story', () => {
+  const doStory = (
+    story: RespostaDeStory = { id: 'story-1', url: 'https://exemplo/s1' },
+  ): MessageEvent => ({
+    kind: 'message', story, mid: 'mid-s1',
+    accountIgId: 'conta', fromId: 'fulana', text: 'quero o preço',
+  });
+
+  function porGatilho(mapa: Partial<Record<string, Automation[]>>) {
+    return vi.fn(async (_conta: number, gatilho: string) => mapa[gatilho] ?? []);
+  }
+
+  it('prefere a automação de Story quando existe', async () => {
+    const daStory = automation({ id: 20, triggerType: 'story_reply' });
+    const d = deps({
+      findPublishedAutomations: porGatilho({
+        story_reply: [daStory],
+        dm: [automation({ id: 10, triggerType: 'dm' })],
+      }),
+    });
+    expect(await processEvent(doStory(), d)).toEqual({ outcome: 'sent', automationId: 20 });
+  });
+
+  it('sem automação de Story, cai na de DM — comportamento de antes', async () => {
+    const d = deps({
+      findPublishedAutomations: porGatilho({ dm: [automation({ id: 10, triggerType: 'dm' })] }),
+    });
+    expect(await processEvent(doStory(), d)).toEqual({ outcome: 'sent', automationId: 10 });
+  });
+
+  it('DM comum nunca procura automação de Story', async () => {
+    const buscar = porGatilho({ dm: [automation({ triggerType: 'dm' })] });
+    const d = deps({ findPublishedAutomations: buscar });
+    await processEvent({ ...doStory(), story: null }, d);
+    expect(buscar.mock.calls.map((c) => c[1])).toEqual(['dm']);
+  });
+
+  /**
+   * A automação de DM não muda de comportamento por causa desta mudança.
+   *
+   * Ela sempre entregou uma vez por dia. Se a resposta de Story passasse a
+   * trocar a janela dela, quem responde dois Stories num dia começaria a
+   * receber duas DMs de uma automação que ninguém mexeu.
+   */
+  it('automação de DM que pega resposta de Story continua na janela do dia', async () => {
+    const d = deps({
+      findPublishedAutomations: porGatilho({ dm: [automation({ triggerType: 'dm' })] }),
+    });
+    await processEvent(doStory({ id: 'story-1', url: null }), d);
+    await processEvent(doStory({ id: 'story-2', url: null }), d);
+    const janelas = (d.claimDelivery as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[3]);
+    expect(new Set(janelas).size).toBe(1);
+    expect(janelas[0]).toMatch(/^dia:/);
+  });
+
+  it('o Story é a ocasião: dois Stories no mesmo dia são duas entregas', async () => {
+    const d = deps({
+      findPublishedAutomations: porGatilho({
+        story_reply: [automation({ triggerType: 'story_reply' })],
+      }),
+    });
+    await processEvent(doStory({ id: 'story-1', url: null }), d);
+    await processEvent(doStory({ id: 'story-2', url: null }), d);
+    const janelas = (d.claimDelivery as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[3]);
+    expect(new Set(janelas).size).toBe(2);
+  });
+
+  it('registra resposta de Story, com de qual Story veio', async () => {
+    const d = deps({
+      findPublishedAutomations: porGatilho({
+        story_reply: [automation({ triggerType: 'story_reply' })],
+      }),
+    });
+    await processEvent(doStory(), d);
+    expect(d.registrarInteracao).toHaveBeenCalledWith(expect.objectContaining({
+      tipo: 'resposta_de_story',
+      detalhe: { storyId: 'story-1', storyUrl: 'https://exemplo/s1' },
+    }));
+  });
+
+  it('Story sem id nem url não inventa detalhe vazio', async () => {
+    const d = deps({
+      findPublishedAutomations: porGatilho({
+        story_reply: [automation({ triggerType: 'story_reply' })],
+      }),
+    });
+    await processEvent(doStory({ id: null, url: null }), d);
+    expect(d.registrarInteracao).toHaveBeenCalledWith(expect.objectContaining({
+      tipo: 'resposta_de_story', detalhe: {},
+    }));
+  });
+
+  it('DM comum continua registrada como dm_recebida, sem detalhe', async () => {
+    const d = deps({
+      findPublishedAutomations: porGatilho({ dm: [automation({ triggerType: 'dm' })] }),
+    });
+    await processEvent({ ...doStory(), story: null }, d);
+    const dados = (d.registrarInteracao as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(dados.tipo).toBe('dm_recebida');
+    expect(dados).not.toHaveProperty('detalhe');
+  });
+});
+
 describe('processEvent com follow-up', () => {
   const resposta = {
     kind: 'message' as const,
+    story: null,
     mid: 'mid-2',
     accountIgId: 'conta',
     fromId: 'fulana',
@@ -450,6 +562,7 @@ describe('dedup da mensagem pelo mid', () => {
   function message(over: Partial<MessageEvent> = {}): MessageEvent {
     return {
       kind: 'message',
+      story: null,
       mid: 'mid-1',
       accountIgId: 'conta',
       fromId: 'fulana',

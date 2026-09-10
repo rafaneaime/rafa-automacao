@@ -30,6 +30,7 @@ describe('parseEvents com mensagem', () => {
         fromId: '9876543210',
         text: 'oi, quero saber mais',
         mid: 'aWc6...',
+        story: null,
       },
     ]);
   });
@@ -87,7 +88,66 @@ describe('parseEvents com comentário e mensagem no mesmo payload', () => {
         fromId: '1111111111',
         text: 'oi, quero saber mais',
         mid: 'aWc6...',
+        story: null,
       },
+    ]);
+  });
+});
+
+/**
+ * Story não tem comentário: tem resposta, e ela chega como mensagem direta.
+ *
+ * O que separa uma da outra é `message.reply_to.story`, que este leitor
+ * jogava fora — e por isso o produto não conseguia responder só quem veio do
+ * Story, nem registrar "Respondeu um Story" na jornada.
+ */
+describe('resposta de Story', () => {
+  const comStory = (story: unknown) => ({
+    object: 'instagram',
+    entry: [{
+      id: 'conta',
+      messaging: [{
+        sender: { id: 'pessoa' },
+        message: { mid: 'mid-story', text: 'quero', reply_to: { story } },
+      }],
+    }],
+  });
+
+  it('traz id e url do Story respondido', () => {
+    const [evento] = parseEvents(comStory({ id: 'story-1', url: 'https://exemplo/s1' }));
+    expect(evento).toMatchObject({
+      kind: 'message', text: 'quero',
+      story: { id: 'story-1', url: 'https://exemplo/s1' },
+    });
+  });
+
+  it.each([
+    ['só id', { id: 'story-1' }, { id: 'story-1', url: null }],
+    ['só url', { url: 'https://exemplo/s1' }, { id: null, url: 'https://exemplo/s1' }],
+    ['vazio', {}, { id: null, url: null }],
+  ])('%s ainda conta como resposta de Story', (_nome, entrada, esperado) => {
+    const [evento] = parseEvents(comStory(entrada));
+    expect(evento).toMatchObject({ story: esperado });
+  });
+
+  it('DM comum continua sem Story', () => {
+    const [evento] = parseEvents(message);
+    expect(evento).toMatchObject({ story: null });
+  });
+
+  it('reply_to sem story não inventa Story', () => {
+    const payload = {
+      object: 'instagram',
+      entry: [{
+        id: 'conta',
+        messaging: [{
+          sender: { id: 'pessoa' },
+          message: { mid: 'm', text: 'oi', reply_to: { mid: 'outra-mensagem' } },
+        }],
+      }],
+    };
+    expect(parseEvents(payload)).toEqual([
+      { kind: 'message', accountIgId: 'conta', fromId: 'pessoa', text: 'oi', mid: 'm', story: null },
     ]);
   });
 });
@@ -111,7 +171,7 @@ describe('mid da mensagem', () => {
       ],
     };
     expect(parseEvents(semMid)).toEqual([
-      { kind: 'message', accountIgId: 'conta', fromId: 'pessoa', text: 'oi', mid: null },
+      { kind: 'message', accountIgId: 'conta', fromId: 'pessoa', text: 'oi', mid: null, story: null },
     ]);
   });
 });
