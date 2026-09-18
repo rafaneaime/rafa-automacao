@@ -384,6 +384,30 @@ describe('processEvent com resposta de Story', () => {
     expect(new Set(janelas).size).toBe(2);
   });
 
+  /**
+   * O defeito que apareceu no painel do Rafa em 18/09/2026: sete contatos
+   * listados como números de 16 dígitos, todos vindos de resposta de Story.
+   * Comentário traz o `@` no webhook; mensagem não traz nada além do id.
+   */
+  it('busca o perfil de quem chega por mensagem, com a conta e o token certos', async () => {
+    const completarPerfil = vi.fn().mockResolvedValue(undefined);
+    const d = deps({
+      completarPerfil,
+      findPublishedAutomations: porGatilho({ story_reply: [automation({ triggerType: 'story_reply' })] }),
+    });
+    await processEvent(doStory(), d);
+    expect(completarPerfil).toHaveBeenCalledWith(99, 'fulana', 'tok');
+  });
+
+  it('falha ao buscar o perfil não atrapalha a entrega', async () => {
+    const d = deps({
+      completarPerfil: vi.fn().mockRejectedValue(new Error('Meta fora do ar')),
+      findPublishedAutomations: porGatilho({ story_reply: [automation({ triggerType: 'story_reply' })] }),
+    });
+    expect(await processEvent(doStory(), d)).toEqual({ outcome: 'sent', automationId: 10 });
+    expect(d.sendDm).toHaveBeenCalled();
+  });
+
   it('registra resposta de Story, com de qual Story veio', async () => {
     const d = deps({
       findPublishedAutomations: porGatilho({

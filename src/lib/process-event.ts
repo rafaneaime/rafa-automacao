@@ -80,6 +80,21 @@ export type ProcessDeps = {
      */
     detalhe?: Record<string, string>;
   }): Promise<void>;
+  /**
+   * Busca o `@` de quem mandou mensagem, quando ele ainda falta.
+   *
+   * O webhook de comentário traz o `@`; o de mensagem traz só o id. Enquanto
+   * só comentário criava contato isso não aparecia — com a resposta de Story,
+   * que chega como mensagem, o painel passou a listar números de 16 dígitos.
+   *
+   * Opcional de propósito: quem não a implementa continua funcionando igual, e
+   * quem implementa não pode deixar uma falha dela atrapalhar a entrega.
+   */
+  completarPerfil?(
+    contactId: number,
+    igUserId: string,
+    token: string,
+  ): Promise<void>;
   publicReply(commentId: string, message: string, token: string): Promise<unknown>;
   privateReply(
     accountIgId: string,
@@ -511,6 +526,11 @@ async function processarMensagem(
 
   const { automation, contactId, janela } = guards;
   const dmStep = automation.steps.find((s) => s.kind === 'dm');
+
+  // Quem chega por mensagem chega sem `@`. Buscar agora, uma vez por contato.
+  await semQuebrar(async () => {
+    await deps.completarPerfil?.(contactId, event.fromId, account.accessToken);
+  });
 
   await semQuebrar(() =>
     deps.registrarInteracao({

@@ -23,6 +23,35 @@ export async function upsertContact(
   return rows[0].id;
 }
 
+/**
+ * Este contato ainda está sem `@`?
+ *
+ * Perguntar ao banco antes de perguntar à Meta: só quem entrou por mensagem
+ * direta chega sem `@`, e só na primeira vez. Sem esta conferência, toda
+ * mensagem recebida gastaria uma chamada à Meta para reescrever o que já se
+ * sabe.
+ */
+export async function faltaUsername(contactId: number): Promise<boolean> {
+  const rows = (await sql`
+    select 1 from contacts where id = ${contactId} and username is null
+  `) as unknown[];
+  return rows.length > 0;
+}
+
+/** Preenche só o que está vazio. O que já foi gravado antes prevalece. */
+export async function gravarPerfilSeAusente(
+  contactId: number,
+  perfil: { username: string | null; nome: string | null },
+): Promise<void> {
+  if (!perfil.username && !perfil.nome) return;
+  await sql`
+    update contacts set
+      username = coalesce(username, ${perfil.username}),
+      nome = coalesce(nome, ${perfil.nome})
+    where id = ${contactId}
+  `;
+}
+
 export async function listContacts(accountId: number): Promise<Contact[]> {
   const rows = (await sql`
     select id, ig_user_id, username, nome, first_seen_at, last_seen_at

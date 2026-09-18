@@ -20,7 +20,8 @@ import {
   markDelivery,
   countRecentSent,
 } from './repo/deliveries';
-import { upsertContact } from './repo/contacts';
+import { faltaUsername, gravarPerfilSeAusente, upsertContact } from './repo/contacts';
+import { getPerfilDaConversa } from './meta/profile';
 import { claimMessage, releaseMessage } from './repo/processed-messages';
 import { publicReply, privateReply, sendDm } from './meta/messaging';
 import {
@@ -48,6 +49,12 @@ export const liveDeps: ProcessDeps = {
   claimMessage,
   releaseMessage,
   upsertContact,
+  // Uma consulta ao banco por mensagem, e uma à Meta só na primeira vez que
+  // aquele contato aparece sem `@`.
+  async completarPerfil(contactId, igUserId, token) {
+    if (!(await faltaUsername(contactId))) return;
+    await gravarPerfilSeAusente(contactId, await getPerfilDaConversa(igUserId, token));
+  },
   // No-op de propósito. A tabela de eventos é da Plataforma e não existe na
   // instalação base; o pipeline chama isto do mesmo jeito nos dois lados, e é
   // isso que mantém process-event.ts idêntico. Ver ARCHITECTURE.md §13.
