@@ -38,6 +38,26 @@ export async function faltaUsername(contactId: number): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * Os contatos que entraram por mensagem antes de existir a busca de perfil.
+ *
+ * Quem instalou antes de 18/09/2026 tem uma lista cheia de números de 16
+ * dígitos, e nada na tela os conserta: a busca automática só vale para quem
+ * chega depois. Esta é a lista que o botão da tela de Contatos percorre.
+ */
+export async function contatosSemUsername(
+  accountId: number,
+  limite: number,
+): Promise<{ id: number; igUserId: string }[]> {
+  const rows = (await sql`
+    select id, ig_user_id from contacts
+    where account_id = ${accountId} and username is null
+    order by last_seen_at desc
+    limit ${Math.max(1, Math.min(100, Math.trunc(limite)))}
+  `) as { id: number; ig_user_id: string }[];
+  return rows.map((r) => ({ id: r.id, igUserId: r.ig_user_id }));
+}
+
 /** Preenche só o que está vazio. O que já foi gravado antes prevalece. */
 export async function gravarPerfilSeAusente(
   contactId: number,

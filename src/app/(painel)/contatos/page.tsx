@@ -10,6 +10,7 @@
  */
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { listContacts } from '@/lib/repo/contacts';
+import { completarPerfisDeContatos } from '../actions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,28 @@ export default async function ContatosPage() {
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold">Contatos</h1>
+
+      {/*
+        Quem entrou por mensagem aparece como número: o webhook de mensagem não
+        traz o `@`. Novos já chegam preenchidos; este botão busca os antigos.
+      */}
+      {contatos.some((c) => !c.username) && (
+        <form action={completarPerfisDeContatos} className="mb-6">
+          <p className="mb-2 text-sm text-tinta-media">
+            Alguns contatos aparecem como número porque entraram por mensagem direta, e o
+            aviso do Instagram não traz o @ de quem escreveu.
+          </p>
+          <button
+            type="submit"
+            className="rounded-lg border border-linha-forte px-3 py-2 text-sm font-medium hover:border-tinta"
+          >
+            Buscar @ e nome no Instagram
+          </button>
+          <span className="ml-2 text-xs text-tinta-fraca">
+            até 25 por vez; clique de novo se sobrar
+          </span>
+        </form>
+      )}
 
       {contatos.length === 0 ? (
         <p className="text-sm text-tinta-fraca">

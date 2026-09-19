@@ -2,7 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { requirePanelSession } from '@/lib/auth';
 import { getFirstAccount } from '@/lib/repo/accounts';
+import { contatosSemUsername, gravarPerfilSeAusente } from '@/lib/repo/contacts';
+import { getPerfilDaConversa } from '@/lib/meta/profile';
 import {
   createAutomation,
   getAutomation,
@@ -32,6 +35,37 @@ const linhas = separarVariacoes;
  */
 function lerGatilho(valor: FormDataEntryValue | null): TipoDeGatilho {
   return valor === 'dm' || valor === 'story_reply' ? valor : 'comment';
+}
+
+/**
+ * Busca na Meta o `@` e o nome de quem entrou por mensagem.
+ *
+ * Contato que chega por comentário traz o `@` no próprio webhook; o que chega
+ * por mensagem — inclusive resposta de Story — traz só o id. Desde 18/09/2026
+ * isso é preenchido sozinho na chegada, mas quem já estava na lista antes
+ * continua aparecendo como um número de 16 dígitos. Este botão é o que
+ * conserta o que ficou para trás.
+ *
+ * Um punhado por clique, e não a lista inteira: são chamadas à Meta, e uma
+ * lista grande estouraria o tempo da requisição no meio do caminho, sem dizer
+ * quanto tinha feito. Clicar de novo continua de onde parou.
+ */
+export async function completarPerfisDeContatos() {
+  await requirePanelSession();
+
+  const account = await getFirstAccount();
+  if (!account) return;
+
+  for (const contato of await contatosSemUsername(account.id, 25)) {
+    // Melhor esforço: um perfil que a Meta não devolve não pode impedir os
+    // outros. Ele continua na lista para a próxima vez.
+    await gravarPerfilSeAusente(
+      contato.id,
+      await getPerfilDaConversa(contato.igUserId, account.accessToken),
+    );
+  }
+
+  revalidatePath('/contatos');
 }
 
 export async function criarAutomacao(formData: FormData) {
