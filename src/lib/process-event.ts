@@ -8,6 +8,15 @@ import { janelaDaEntrega } from './automations/janela';
 
 export const RATE_LIMIT_PER_HOUR = 750;
 
+/**
+ * A reserva do pedido de seguir, na tabela de sequência já enviada.
+ *
+ * Negativo de propósito: posição de passo é sempre zero ou mais, então este
+ * número não colide com mensagem nenhuma da sequência — nem nas automações
+ * que já existiam quando isto foi escrito.
+ */
+export const POSICAO_DO_PEDIDO_DE_SEGUIR = -1;
+
 export type ProcessDeps = {
   findAccount(
     accountIgId: string,
@@ -415,6 +424,58 @@ async function tentarFollowUp(
   const enviados = await deps.sentFollowUps(delivery.id);
   const passo = nextFollowUp(automation, enviados);
   if (!passo) return null;
+
+  /*
+   * O pedido de seguir, na resposta — que é o único lugar onde ele cabe numa
+   * automação de comentário.
+   *
+   * O Instagram só conta se a pessoa segue depois que ela **escreve** para a
+   * conta. Quem comentou ainda não escreveu, então na hora do comentário não
+   * há o que perguntar. Mas quando ela responde a DM, ela escreveu — e aí dá.
+   * O desenho que funciona é esse: a primeira DM pede uma resposta, e é na
+   * resposta que o link sai ou o follow é pedido.
+   *
+   * O pedido sai UMA vez, com reserva própria, e **não consome** a mensagem da
+   * sequência: quem segue depois e volta a escrever recebe o que veio buscar.
+   * Quem ignorar o pedido e responder de novo também recebe — segurar o
+   * conteúdo para sempre transformaria um pedido em pedágio.
+   */
+  const passoNaoSegue = automation.steps.find((s) => s.kind === 'dm_nao_segue');
+  if (
+    passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta &&
+    !enviados.includes(POSICAO_DO_PEDIDO_DE_SEGUIR)
+  ) {
+    const segue = await deps.segueAConta(event.fromId, account.accessToken).catch(() => null);
+    if (segue === false && await deps.claimFollowUp(delivery.id, POSICAO_DO_PEDIDO_DE_SEGUIR)) {
+      const contactId = await deps.upsertContact(account.id, event.fromId, null);
+      try {
+        await deps.sendDm(
+          account.igUserId,
+          event.fromId,
+          aplicarVariaveis(deps.pick(passoNaoSegue.variants), await quemE(contactId, deps)),
+          [],
+          account.accessToken,
+          automation.id,
+        );
+        await semQuebrar(() =>
+          deps.registrarInteracao({
+            accountId: account.id,
+            contactId,
+            tipo: 'dm_enviada',
+            automationId: automation.id,
+            referencia: `seguir-${delivery.id}`,
+            quando: new Date(),
+          }),
+        );
+        return { outcome: 'sent', automationId: automation.id };
+      } catch (erro) {
+        // Mesma regra do resto da sequência: devolve a reserva e relata o
+        // erro, em vez de estourar. A próxima resposta dela tenta de novo.
+        await deps.releaseFollowUp(delivery.id, POSICAO_DO_PEDIDO_DE_SEGUIR);
+        return { outcome: 'error', automationId: automation.id, error: String(erro) };
+      }
+    }
+  }
 
   if ((await deps.countRecentSent(account.id)) >= RATE_LIMIT_PER_HOUR) {
     return { outcome: 'throttled', automationId: automation.id };

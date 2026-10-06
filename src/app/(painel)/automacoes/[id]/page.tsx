@@ -247,13 +247,33 @@ export default async function EditorPage({
               </p>
             </>
           ) : (
-            <p className="rounded-md bg-interessado-tenue p-3 text-sm text-interessado-forte">
-              Não dá para conferir isto em automação de comentário. O Instagram
-              só conta se a pessoa segue a conta depois que ela <strong>escreve</strong>{' '}
-              para você — quem comentou ainda não escreveu, e a pergunta volta
-              recusada. Em automação de DM ou de resposta de Story funciona.
-              Conferido na API em 06/10/2026.
-            </p>
+            <>
+              <p className="mb-3 rounded-md bg-interessado-tenue p-3 text-sm text-interessado-forte">
+                Na hora do comentário não dá para conferir: o Instagram só conta
+                se a pessoa segue depois que ela <strong>escreve</strong> para
+                você, e quem comentou ainda não escreveu. Mas quando ela{' '}
+                <strong>responde a sua DM</strong>, ela escreveu — e aí dá.
+              </p>
+              <p className="mb-3 text-sm text-tinta-fraca">
+                Então o caminho que funciona é este: na DM acima, peça uma
+                resposta (&ldquo;responde aqui que eu te mando&rdquo;) e deixe o
+                link para a <strong>Continuação da conversa</strong>, logo
+                abaixo. Escreva o pedido de seguir aqui, e quem ainda não seguir
+                recebe ele no lugar da continuação, uma vez só.
+              </p>
+              <CamposDeVariacoes
+                name="textosNaoSegue"
+                rows={3}
+                defaultValues={naoSegue?.variants ?? []}
+                className={CAMPO}
+                rotuloDeAdicionar="Acrescentar outra versão"
+              />
+              <p className="mt-3 text-sm text-tinta-media">
+                O pedido sai uma vez. Se a pessoa responder de novo sem seguir,
+                ela recebe a continuação assim mesmo — pedir é uma coisa,
+                cobrar pedágio é outra.
+              </p>
+            </>
           )}
         </div>
 
