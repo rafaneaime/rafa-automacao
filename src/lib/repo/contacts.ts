@@ -249,3 +249,19 @@ export async function idsDeContatosDaConta(
   `) as { id: number }[];
   return new Set(rows.map((r) => Number(r.id)));
 }
+
+/**
+ * Nome e arroba de um contato, para a mensagem chamar a pessoa pelo nome.
+ *
+ * Sem `accountId` de propósito: o id vem do `upsertContact` que acabou de
+ * rodar neste mesmo fluxo, não de entrada de fora. Pedir a conta aqui só
+ * acrescentaria uma coluna para conferir contra ela mesma.
+ */
+export async function dadosDoContato(
+  contactId: number,
+): Promise<{ nome: string | null; username: string | null } | null> {
+  const rows = (await sql`
+    select nome, username from contacts where id = ${contactId}
+  `) as { nome: string | null; username: string | null }[];
+  return rows[0] ?? null;
+}

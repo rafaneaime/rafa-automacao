@@ -3,6 +3,7 @@ import type { NormalizedEvent, CommentEvent, MessageEvent, RespostaDeStory } fro
 import type { Automation, TipoDeGatilho } from './repo/types';
 import type { Button } from './meta/messaging';
 import { nextFollowUp } from './automations/follow-up';
+import { aplicarVariaveis } from './automations/variaveis';
 import { janelaDaEntrega } from './automations/janela';
 
 export const RATE_LIMIT_PER_HOUR = 750;
@@ -97,6 +98,12 @@ export type ProcessDeps = {
    * que é também o que acontece quando a resposta é `null`.
    */
   segueAConta?(igUserId: string, token: string): Promise<boolean | null>;
+  /**
+   * Nome e arroba já guardados deste contato, para a mensagem chamar a pessoa
+   * pelo nome. Opcional: sem ela, o marcador de nome some do texto em vez de
+   * sair literal.
+   */
+  dadosDoContato?(contactId: number): Promise<{ nome: string | null; usuario: string | null }>;
   completarPerfil?(
     contactId: number,
     igUserId: string,
@@ -359,7 +366,9 @@ async function processComment(
           account.igUserId,
           event.commentId,
           event.fromId,
-          deps.pick(dmStep.variants),
+          // O webhook de comentário traz o arroba de quem comentou, e é com
+          // ele que a pessoa é chamada quando a mensagem pede o nome.
+          aplicarVariaveis(deps.pick(dmStep.variants), { usuario: event.fromUsername }),
           dmStep.buttons,
           account.accessToken,
           automation.id,
@@ -440,7 +449,10 @@ async function tentarFollowUp(
     await deps.sendDm(
       account.igUserId,
       event.fromId,
-      deps.pick(passo.variants.filter((v) => v.trim().length > 0)),
+      aplicarVariaveis(
+        deps.pick(passo.variants.filter((v) => v.trim().length > 0)),
+        await quemE(contactId, deps),
+      ),
       passo.buttons,
       account.accessToken,
       automation.id,
@@ -573,7 +585,7 @@ async function processarMensagem(
         await deps.sendDm(
           account.igUserId,
           event.fromId,
-          deps.pick(passoDaVez.variants),
+          aplicarVariaveis(deps.pick(passoDaVez.variants), await quemE(contactId, deps)),
           // O botão com o link mora no passo da DM normal. Quem ainda não segue
           // recebe o pedido sem o link — é essa a diferença entre os dois.
           passoDaVez.kind === 'dm' ? passoDaVez.buttons : [],
@@ -602,6 +614,19 @@ async function processarMensagem(
   }
 
   return resultado;
+}
+
+/** Melhor esforço: sem resposta, a mensagem sai sem o nome, nunca com erro. */
+async function quemE(
+  contactId: number,
+  deps: ProcessDeps,
+): Promise<{ nome: string | null; usuario: string | null }> {
+  if (!deps.dadosDoContato) return { nome: null, usuario: null };
+  try {
+    return await deps.dadosDoContato(contactId);
+  } catch {
+    return { nome: null, usuario: null };
+  }
 }
 
 export function processEvent(

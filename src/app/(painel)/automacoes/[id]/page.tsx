@@ -193,6 +193,13 @@ export default async function EditorPage({
             propósito: uma segunda DM cairia fora da janela de 24h do Meta e
             falharia com erro #10.
           </p>
+          <p className="mb-3 text-sm text-tinta-fraca">
+            Escreva <code>{'{nome}'}</code> onde o nome da pessoa deve entrar —{' '}
+            <code>{'{name}'}</code> também vale, que é como se escreve no
+            ManyChat. Quando o Instagram não conta o nome de quem comentou, o
+            marcador some junto com o espaço que sobraria, em vez de sair
+            escrito na mensagem.
+          </p>
           <CamposDeVariacoes
             name="textosDm"
             rows={4}
