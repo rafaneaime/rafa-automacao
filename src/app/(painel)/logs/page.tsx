@@ -162,7 +162,7 @@ export default async function LogsPage({
 
       <Secao
         titulo="O que o Instagram manda para cá"
-        descricao="Os avisos que a sua conta autorizou. Falta um deles? Esse tipo de evento nunca chega, por mais que aconteça no Instagram."
+        descricao="Os avisos que a sua conta pediu para receber. Falta um deles? Esse tipo de evento nunca chega, por mais que aconteça no Instagram."
       >
         <Cartao className="p-4">
           {!inscricao.ok ? (
@@ -186,6 +186,25 @@ export default async function LogsPage({
                   ))
                 )}
               </ul>
+              {/*
+                Estar na lista não é garantia de entrega, e dizer o contrário
+                custa caro. Numa instalação, "comentário em post" aparecia aqui
+                e nenhum comentário chegava: a conta pede os avisos, mas quem
+                entrega é o aplicativo no portal da Meta, e ele tem a própria
+                lista de campos assinados. Essa segunda lista não dá para ler
+                por API com as credenciais que a instalação tem — então a tela
+                diz onde olhar em vez de fingir que sabe.
+              */}
+              {faltando.length === 0 && (
+                <p className="mt-4 text-sm text-tinta-media">
+                  Esta é a lista que a <strong>sua conta</strong> pediu. Se um
+                  aviso está aqui e mesmo assim nunca chega nada dele, o lugar
+                  de olhar é o aplicativo no portal da Meta: em Webhooks, na
+                  seção do Instagram, cada campo tem o próprio botão de
+                  inscrever. Conta inscrita e aplicativo sem o campo marcado dá
+                  exatamente isto — uma lista bonita aqui e silêncio lá embaixo.
+                </p>
+              )}
               {faltando.length > 0 && (
                 <div className="mt-4 text-sm">
                   <p className="font-medium">
