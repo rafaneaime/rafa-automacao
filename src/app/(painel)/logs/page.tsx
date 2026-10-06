@@ -165,6 +165,27 @@ export default async function LogsPage({
         descricao="Os avisos que a sua conta pediu para receber. Falta um deles? Esse tipo de evento nunca chega, por mais que aconteça no Instagram."
       >
         <Cartao className="p-4">
+          {/*
+            Qual conta está conectada, dito aqui.
+            Numa instalação passamos dias atrás de um comentário que não
+            chegava, com tudo certo no portal — e a pergunta que ninguém tinha
+            feito era se o post comentado era desta conta. O dado estava em
+            Configuração, a duas telas de distância de quem estava investigando.
+          */}
+          {conta && (
+            <p className="mb-3 text-sm">
+              Conta conectada:{' '}
+              <strong>{conta.username ? `@${conta.username}` : conta.igUserId}</strong>
+              <span className="numero ml-2 text-xs text-tinta-fraca">{conta.igUserId}</span>
+              <br />
+              <span className="text-tinta-media">
+                Só o que acontece <strong>nesta</strong> conta chega aqui. Comentário
+                em post de outro perfil não chega, e comentário feito por ela mesma
+                também não — o Instagram não avisa quando o dono comenta no
+                próprio post.
+              </span>
+            </p>
+          )}
           {!inscricao.ok ? (
             <p className="text-sm">
               {inscricao.motivo === 'conta-nao-conectada'
