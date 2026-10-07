@@ -230,8 +230,7 @@ export default async function EditorPage({
             <>
               <p className="mb-3 text-sm text-tinta-fraca">
                 Mensagem que sai <strong>no lugar da DM acima</strong> enquanto a
-                pessoa não seguir a conta. Ela só recebe o conteúdo depois de
-                seguir. Deixe em branco para mandar a mesma DM para todo mundo.
+                pessoa não seguir a conta.
               </p>
               <CamposDeVariacoes
                 name="textosNaoSegue"
@@ -247,6 +246,27 @@ export default async function EditorPage({
             </>
           ) : (
             <>
+              {/*
+                A caixinha e o texto sao decisoes separadas: quem desmarca
+                continua com a mensagem escrita, e remarcar nao obriga a
+                reescrever nada.
+              */}
+              <label className="mb-3 flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="exigirSeguir"
+                  value="sim"
+                  defaultChecked={automacao.exigirSeguir}
+                  className="mt-1"
+                />
+                <span>
+                  <strong>Exigir que a pessoa siga antes de receber.</strong>{' '}
+                  Com isto marcado, enquanto ela não seguir, toda resposta dela
+                  recebe o texto abaixo e a continuação da conversa fica
+                  esperando. Desmarcado, o texto não é usado e todo mundo recebe
+                  igual.
+                </span>
+              </label>
               <p className="mb-3 rounded-md bg-interessado-tenue p-3 text-sm text-interessado-forte">
                 Na hora do comentário não dá para conferir: o Instagram só conta
                 se a pessoa segue depois que ela <strong>escreve</strong> para
@@ -268,9 +288,9 @@ export default async function EditorPage({
                 rotuloDeAdicionar="Acrescentar outra versão"
               />
               <p className="mt-3 text-sm text-tinta-media">
-                Enquanto a pessoa não seguir, toda resposta dela recebe este
-                texto, e a continuação fica esperando. Ela só avança depois de
-                seguir. Deixe em branco para não exigir nada.
+                Se o Instagram não responder se a pessoa segue, a conversa corre
+                normalmente. Quando a consulta falha, quem ficaria sem o material
+                é alguém que talvez já siga você.
               </p>
             </>
           )}

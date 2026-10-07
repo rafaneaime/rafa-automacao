@@ -437,7 +437,7 @@ async function tentarFollowUp(
    * que é nosso.
    */
   const passoNaoSegue = automation.steps.find((s) => s.kind === 'dm_nao_segue');
-  if (passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta) {
+  if (automation.exigirSeguir && passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta) {
     const segue = await deps.segueAConta(event.fromId, account.accessToken).catch(() => null);
     if (segue === false) {
       // O teto por hora vale aqui também: o pedido é mensagem como as outras.
@@ -610,7 +610,7 @@ async function processarMensagem(
    * pediu. Segurar o link por uma dúvida nossa seria cobrar dela o nosso limite.
    */
   const passoNaoSegue = automation.steps.find((s) => s.kind === 'dm_nao_segue');
-  const segue = passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta
+  const segue = automation.exigirSeguir && passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta
     ? await deps.segueAConta(event.fromId, account.accessToken).catch(() => null)
     : null;
   const passoDaVez = segue === false && passoNaoSegue ? passoNaoSegue : dmStep;

@@ -160,6 +160,7 @@ export async function salvarAutomacao(formData: FormData) {
         name: String(formData.get('nome') ?? '').trim() || 'Sem nome',
         status: publicar && !publicarSemDm ? 'published' : 'draft',
         triggerType: lerGatilho(formData.get('gatilho')),
+        exigirSeguir: formData.get('exigirSeguir') === 'sim',
         mediaId: mediaId.length > 0 ? mediaId : null,
         keywords: String(formData.get('palavras') ?? '')
           .split(',')

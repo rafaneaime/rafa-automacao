@@ -1,0 +1,12 @@
+-- A trava de seguir vira uma escolha, e não um efeito colateral do texto.
+--
+-- Antes, exigir o follow era a mesma coisa que ter escrito a mensagem de "quem
+-- ainda não segue": quem quisesse desligar a trava precisava apagar o texto, e
+-- quem quisesse só avisar sem bloquear não tinha como. Duas decisões diferentes
+-- coladas numa só.
+--
+-- `false` por padrão porque é o comportamento que a instalação já tinha antes
+-- de existir qualquer trava, e porque uma coluna nova não pode mudar o que as
+-- automações publicadas fazem hoje. Quem já usava a mensagem precisa marcar a
+-- opção uma vez — está escrito na tela.
+alter table automations add column if not exists exigir_seguir boolean not null default false;

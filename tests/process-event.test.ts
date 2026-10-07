@@ -16,6 +16,7 @@ function automation(over: Partial<Automation> = {}): Automation {
     mediaId: null,
     keywords: ['preco'],
     matchMode: 'contains',
+    exigirSeguir: true,
     steps: [
       { id: 1, position: 0, kind: 'public_reply', variants: ['te chamei!'], buttons: [] },
       {
@@ -881,5 +882,44 @@ describe('pedido de seguir na resposta, que é onde ele cabe', () => {
     });
     const resultado = await processEvent(dm(), d);
     expect(resultado.outcome).toBe('error');
+  });
+});
+
+describe('a trava de seguir é escolha de quem desenha', () => {
+  const dm = (over: Partial<MessageEvent> = {}): MessageEvent => ({
+    kind: 'message', story: null, mid: 'mid-x',
+    accountIgId: 'conta', fromId: 'fulana', text: 'quero', ...over,
+  });
+  const comTexto = (exigirSeguir: boolean) => automation({
+    exigirSeguir,
+    steps: [
+      ...automation().steps,
+      { id: 3, position: 2, kind: 'dm_nao_segue', variants: ['me segue primeiro'], buttons: [] },
+      { id: 4, position: 3, kind: 'follow_up', variants: ['aqui está o link'], buttons: [] },
+    ],
+  });
+  const respondendo = (exigirSeguir: boolean) => deps({
+    findSentDelivery: vi.fn().mockResolvedValue({ id: 500, automationId: 10 }),
+    findAutomationById: vi.fn().mockResolvedValue(comTexto(exigirSeguir)),
+    sentFollowUps: vi.fn().mockResolvedValue([]),
+    segueAConta: vi.fn().mockResolvedValue(false),
+  });
+
+  /*
+   * Desmarcar não apaga o texto, e com a caixinha desmarcada o texto não é
+   * usado: escrever a mensagem e decidir bloquear são duas decisões, e colar as
+   * duas obrigava a apagar o que já estava escrito para desligar a trava.
+   */
+  it('desmarcada, nem pergunta ao Instagram e a conversa segue', async () => {
+    const d = respondendo(false);
+    await processEvent(dm(), d);
+    expect(d.segueAConta).not.toHaveBeenCalled();
+    expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'aqui está o link', [], 'tok', 10);
+  });
+
+  it('marcada, quem não segue fica no pedido', async () => {
+    const d = respondendo(true);
+    await processEvent(dm(), d);
+    expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'me segue primeiro', [], 'tok', 10);
   });
 });

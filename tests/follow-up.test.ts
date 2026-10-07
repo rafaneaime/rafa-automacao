@@ -16,6 +16,7 @@ function automacao(steps: AutomationStep[]): Automation {
     mediaId: null,
     keywords: ['preco'],
     matchMode: 'contains',
+  exigirSeguir: false,
     steps,
   };
 }

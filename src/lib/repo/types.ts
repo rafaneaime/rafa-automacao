@@ -37,6 +37,14 @@ export type Automation = {
   mediaId: string | null;
   keywords: string[];
   matchMode: MatchMode;
+  /**
+   * Segurar o conteúdo até a pessoa seguir a conta.
+   *
+   * Separado do texto de `dm_nao_segue` de propósito: escrever a mensagem e
+   * decidir bloquear são duas coisas, e colar as duas obrigava a apagar o
+   * texto para desligar a trava.
+   */
+  exigirSeguir: boolean;
   steps: AutomationStep[];
 };
 

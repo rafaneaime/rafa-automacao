@@ -14,6 +14,7 @@ type AutomationRow = {
   media_id: string | null;
   keywords: string[];
   match_mode: Automation['matchMode'];
+  exigir_seguir: boolean;
 };
 
 type StepRow = {
@@ -45,6 +46,7 @@ async function attachSteps(rows: AutomationRow[]): Promise<Automation[]> {
     mediaId: row.media_id,
     keywords: row.keywords,
     matchMode: row.match_mode,
+    exigirSeguir: row.exigir_seguir ?? false,
     steps: steps
       .filter((s) => s.automation_id === row.id)
       .map((s) => ({
@@ -62,7 +64,7 @@ export async function findPublishedAutomations(
   trigger: TipoDeGatilho,
 ): Promise<Automation[]> {
   const rows = (await sql`
-    select id, account_id, name, status, trigger_type, media_id, keywords, match_mode
+    select id, account_id, name, status, trigger_type, media_id, keywords, match_mode, exigir_seguir
     from automations
     where account_id = ${accountId}
       and status = 'published'
@@ -77,7 +79,7 @@ export async function listAutomations(
 ): Promise<(Automation & { deliveryCount: number })[]> {
   const rows = (await sql`
     select a.id, a.account_id, a.name, a.status, a.trigger_type, a.media_id,
-           a.keywords, a.match_mode,
+           a.keywords, a.match_mode, a.exigir_seguir,
            (select count(*)::int from deliveries d
              where d.automation_id = a.id and d.status = 'sent') as delivery_count
     from automations a
@@ -91,7 +93,7 @@ export async function listAutomations(
 
 export async function getAutomation(id: number): Promise<Automation | null> {
   const rows = (await sql`
-    select id, account_id, name, status, trigger_type, media_id, keywords, match_mode
+    select id, account_id, name, status, trigger_type, media_id, keywords, match_mode, exigir_seguir
     from automations where id = ${id}
   `) as AutomationRow[];
   const list = await attachSteps(rows);
@@ -128,6 +130,7 @@ export type AutomationFields = {
   mediaId: string | null;
   keywords: string[];
   matchMode: Automation['matchMode'];
+  exigirSeguir?: boolean;
 };
 
 export async function saveAutomation(
@@ -153,6 +156,7 @@ export async function saveAutomation(
         media_id = ${fields.mediaId},
         keywords = ${fields.keywords},
         match_mode = ${fields.matchMode},
+        exigir_seguir = ${fields.exigirSeguir ?? false},
         updated_at = now()
       where id = ${id}
     `,
