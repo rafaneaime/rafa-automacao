@@ -93,6 +93,23 @@ export async function salvarAutomacao(formData: FormData) {
   const mediaId = String(formData.get('mediaId') ?? '').trim();
   const botaoTitulo = String(formData.get('botaoTitulo') ?? '').trim();
   const botaoUrl = String(formData.get('botaoUrl') ?? '').trim();
+
+  /*
+   * O botão de cada mensagem da continuação.
+   *
+   * O envio sempre soube mandar botão em qualquer passo — era a tela que só
+   * tinha campo na primeira DM. Quem punha o link da aula na continuação
+   * escrevia o endereço no meio do texto, e perdia o botão que o Instagram
+   * desenha bonito.
+   *
+   * Sem URL não existe botão: título solto não vira nada, e mandar um botão
+   * sem destino faria a Meta recusar a mensagem inteira.
+   */
+  const botaoDe = (campo: string) => {
+    const url = String(formData.get(`${campo}Url`) ?? '').trim();
+    if (url.length === 0) return [];
+    return [{ title: String(formData.get(`${campo}Titulo`) ?? '').trim() || 'Abrir', url }];
+  };
   const textosDm = linhas(formData.getAll('textosDm'));
   const passosDoFormulario = [
     {
@@ -119,13 +136,13 @@ export async function salvarAutomacao(formData: FormData) {
       position: 3,
       kind: 'follow_up' as const,
       variants: linhas(formData.getAll('followUp1')),
-      buttons: [],
+      buttons: botaoDe('botaoFollowUp1'),
     },
     {
       position: 4,
       kind: 'follow_up' as const,
       variants: linhas(formData.getAll('followUp2')),
-      buttons: [],
+      buttons: botaoDe('botaoFollowUp2'),
     },
   ];
 

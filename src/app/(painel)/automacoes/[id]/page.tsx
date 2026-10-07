@@ -229,10 +229,9 @@ export default async function EditorPage({
           {podeConferirSeSegue ? (
             <>
               <p className="mb-3 text-sm text-tinta-fraca">
-                Mensagem que sai <strong>no lugar da DM acima</strong> quando a
-                pessoa ainda não segue a conta. Deixe em branco para mandar a
-                mesma DM para todo mundo. Escreva aqui o pedido para seguir, sem
-                o link — o botão com o link fica na DM normal.
+                Mensagem que sai <strong>no lugar da DM acima</strong> enquanto a
+                pessoa não seguir a conta. Ela só recebe o conteúdo depois de
+                seguir. Deixe em branco para mandar a mesma DM para todo mundo.
               </p>
               <CamposDeVariacoes
                 name="textosNaoSegue"
@@ -269,9 +268,9 @@ export default async function EditorPage({
                 rotuloDeAdicionar="Acrescentar outra versão"
               />
               <p className="mt-3 text-sm text-tinta-media">
-                O pedido sai uma vez. Se a pessoa responder de novo sem seguir,
-                ela recebe a continuação assim mesmo — pedir é uma coisa,
-                cobrar pedágio é outra.
+                Enquanto a pessoa não seguir, toda resposta dela recebe este
+                texto, e a continuação fica esperando. Ela só avança depois de
+                seguir. Deixe em branco para não exigir nada.
               </p>
             </>
           )}
@@ -300,8 +299,22 @@ export default async function EditorPage({
               className={CAMPO}
             />
           </label>
+          <div className="mt-2 flex gap-2">
+            <input
+              name="botaoFollowUp1Titulo"
+              defaultValue={followUps[0]?.buttons[0]?.title ?? ''}
+              placeholder="Texto do botão"
+              className={CAMPO}
+            />
+            <input
+              name="botaoFollowUp1Url"
+              defaultValue={followUps[0]?.buttons[0]?.url ?? ''}
+              placeholder="https://seu-link.com"
+              className={CAMPO}
+            />
+          </div>
 
-          <label className="mt-3 block text-sm text-tinta-media">
+          <label className="mt-4 block text-sm text-tinta-media">
             Mensagem 2
             <CamposDeVariacoes
               name="followUp2"
@@ -310,6 +323,25 @@ export default async function EditorPage({
               className={CAMPO}
             />
           </label>
+          <div className="mt-2 flex gap-2">
+            <input
+              name="botaoFollowUp2Titulo"
+              defaultValue={followUps[1]?.buttons[0]?.title ?? ''}
+              placeholder="Texto do botão"
+              className={CAMPO}
+            />
+            <input
+              name="botaoFollowUp2Url"
+              defaultValue={followUps[1]?.buttons[0]?.url ?? ''}
+              placeholder="https://seu-link.com"
+              className={CAMPO}
+            />
+          </div>
+          <p className="mt-3 text-sm text-tinta-fraca">
+            O botão é opcional e só aparece quando você preenche o endereço. É
+            melhor que o link solto no texto: o Instagram desenha o botão, e o
+            clique conta como clique.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

@@ -8,14 +8,6 @@ import { janelaDaEntrega } from './automations/janela';
 
 export const RATE_LIMIT_PER_HOUR = 750;
 
-/**
- * A reserva do pedido de seguir, na tabela de sequência já enviada.
- *
- * Negativo de propósito: posição de passo é sempre zero ou mais, então este
- * número não colide com mensagem nenhuma da sequência — nem nas automações
- * que já existiam quando isto foi escrito.
- */
-export const POSICAO_DO_PEDIDO_DE_SEGUIR = -1;
 
 export type ProcessDeps = {
   findAccount(
@@ -426,34 +418,39 @@ async function tentarFollowUp(
   if (!passo) return null;
 
   /*
-   * O pedido de seguir, na resposta — que é o único lugar onde ele cabe numa
-   * automação de comentário.
+   * Seguir é condição, não convite.
    *
    * O Instagram só conta se a pessoa segue depois que ela **escreve** para a
    * conta. Quem comentou ainda não escreveu, então na hora do comentário não
    * há o que perguntar. Mas quando ela responde a DM, ela escreveu — e aí dá.
    * O desenho que funciona é esse: a primeira DM pede uma resposta, e é na
-   * resposta que o link sai ou o follow é pedido.
+   * resposta que o conteúdo sai ou o follow é cobrado.
    *
-   * O pedido sai UMA vez, com reserva própria, e **não consome** a mensagem da
-   * sequência: quem segue depois e volta a escrever recebe o que veio buscar.
-   * Quem ignorar o pedido e responder de novo também recebe — segurar o
-   * conteúdo para sempre transformaria um pedido em pedágio.
+   * Enquanto não seguir, **toda** resposta dela recebe o pedido, e a sequência
+   * fica intacta esperando. Uma versão anterior mandava o pedido uma vez só e
+   * liberava o conteúdo na insistência; isso fazia do follow um pedido de
+   * favor, e quem desenha a automação queria uma condição. A escolha é de quem
+   * vende, não nossa.
+   *
+   * O que continua valendo: `null` não é "não segue". Quando o Instagram não
+   * responde, a sequência corre normalmente — a pessoa não paga por um limite
+   * que é nosso.
    */
   const passoNaoSegue = automation.steps.find((s) => s.kind === 'dm_nao_segue');
-  if (
-    passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta &&
-    !enviados.includes(POSICAO_DO_PEDIDO_DE_SEGUIR)
-  ) {
+  if (passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta) {
     const segue = await deps.segueAConta(event.fromId, account.accessToken).catch(() => null);
-    if (segue === false && await deps.claimFollowUp(delivery.id, POSICAO_DO_PEDIDO_DE_SEGUIR)) {
+    if (segue === false) {
+      // O teto por hora vale aqui também: o pedido é mensagem como as outras.
+      if ((await deps.countRecentSent(account.id)) >= RATE_LIMIT_PER_HOUR) {
+        return { outcome: 'throttled', automationId: automation.id };
+      }
       const contactId = await deps.upsertContact(account.id, event.fromId, null);
       try {
         await deps.sendDm(
           account.igUserId,
           event.fromId,
           aplicarVariaveis(deps.pick(passoNaoSegue.variants), await quemE(contactId, deps)),
-          [],
+          passoNaoSegue.buttons,
           account.accessToken,
           automation.id,
         );
@@ -463,15 +460,12 @@ async function tentarFollowUp(
             contactId,
             tipo: 'dm_enviada',
             automationId: automation.id,
-            referencia: `seguir-${delivery.id}`,
+            referencia: `seguir-${delivery.id}-${event.mid ?? Date.now()}`,
             quando: new Date(),
           }),
         );
         return { outcome: 'sent', automationId: automation.id };
       } catch (erro) {
-        // Mesma regra do resto da sequência: devolve a reserva e relata o
-        // erro, em vez de estourar. A próxima resposta dela tenta de novo.
-        await deps.releaseFollowUp(delivery.id, POSICAO_DO_PEDIDO_DE_SEGUIR);
         return { outcome: 'error', automationId: automation.id, error: String(erro) };
       }
     }

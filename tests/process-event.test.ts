@@ -789,29 +789,70 @@ describe('pedido de seguir na resposta, que é onde ele cabe', () => {
     const d = respondendo({ segueAConta: vi.fn().mockResolvedValue(false) });
     expect(await processEvent(dm(), d)).toEqual({ outcome: 'sent', automationId: 10 });
     expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'me segue primeiro :)', [], 'tok', 10);
-    // A mensagem da sequência não foi gasta: ela espera a próxima resposta.
-    expect(d.claimFollowUp).toHaveBeenCalledWith(500, -1);
+    // A mensagem da sequência não foi gasta: ela espera a pessoa seguir.
     expect(d.claimFollowUp).not.toHaveBeenCalledWith(500, 3);
+  });
+
+  /*
+   * Seguir é condição, não convite: enquanto não seguir, toda resposta recebe
+   * o pedido de novo e o conteúdo continua esperando. Uma versão anterior
+   * liberava na insistência, e isso fazia do follow um pedido de favor.
+   */
+  it('insistir sem seguir não libera o conteúdo', async () => {
+    const d = respondendo({ segueAConta: vi.fn().mockResolvedValue(false) });
+    await processEvent(dm({ mid: 'mid-1' }), d);
+    await processEvent(dm({ mid: 'mid-2' }), d);
+    await processEvent(dm({ mid: 'mid-3' }), d);
+    const textos = (d.sendDm as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(textos).toEqual(['me segue primeiro :)', 'me segue primeiro :)', 'me segue primeiro :)']);
+    expect(textos).not.toContain('aqui está o link');
+  });
+
+  it('seguiu depois de insistir: aí sim recebe', async () => {
+    const segueAConta = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const d = respondendo({ segueAConta });
+    await processEvent(dm({ mid: 'mid-1' }), d);
+    await processEvent(dm({ mid: 'mid-2' }), d);
+    const textos = (d.sendDm as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(textos).toEqual(['me segue primeiro :)', 'aqui está o link']);
+  });
+
+  it('o teto por hora vale para o pedido também', async () => {
+    const d = respondendo({
+      segueAConta: vi.fn().mockResolvedValue(false),
+      countRecentSent: vi.fn().mockResolvedValue(RATE_LIMIT_PER_HOUR),
+    });
+    expect(await processEvent(dm(), d)).toEqual({ outcome: 'throttled', automationId: 10 });
+    expect(d.sendDm).not.toHaveBeenCalled();
+  });
+
+  it('o pedido pode levar botão, quando a automação tiver um', async () => {
+    const comBotao = automation({
+      triggerType: 'comment',
+      steps: [
+        ...automation().steps,
+        {
+          id: 3, position: 2, kind: 'dm_nao_segue', variants: ['me segue primeiro'],
+          buttons: [{ title: 'Abrir o perfil', url: 'https://instagram.com/conta' }],
+        },
+        { id: 4, position: 3, kind: 'follow_up', variants: ['aqui está o link'], buttons: [] },
+      ],
+    });
+    const d = respondendo({
+      segueAConta: vi.fn().mockResolvedValue(false),
+      findAutomationById: vi.fn().mockResolvedValue(comBotao),
+    });
+    await processEvent(dm(), d);
+    expect(d.sendDm).toHaveBeenCalledWith(
+      'conta', 'fulana', 'me segue primeiro',
+      [{ title: 'Abrir o perfil', url: 'https://instagram.com/conta' }], 'tok', 10,
+    );
   });
 
   it('quem já segue recebe a sequência normal', async () => {
     const d = respondendo({ segueAConta: vi.fn().mockResolvedValue(true) });
     await processEvent(dm(), d);
     expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'aqui está o link', [], 'tok', 10);
-  });
-
-  /*
-   * Segurar o conteúdo para sempre transformaria um pedido em pedágio. Quem
-   * respondeu de novo recebe o que veio buscar, tendo seguido ou não.
-   */
-  it('o pedido sai uma vez só: na segunda resposta vem o conteúdo', async () => {
-    const d = respondendo({
-      segueAConta: vi.fn().mockResolvedValue(false),
-      sentFollowUps: vi.fn().mockResolvedValue([-1]),
-    });
-    await processEvent(dm(), d);
-    expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'aqui está o link', [], 'tok', 10);
-    expect(d.segueAConta).not.toHaveBeenCalled();
   });
 
   it('sem resposta do Instagram, a sequência segue como sempre seguiu', async () => {
@@ -833,12 +874,12 @@ describe('pedido de seguir na resposta, que é onde ele cabe', () => {
     expect(d.segueAConta).not.toHaveBeenCalled();
   });
 
-  it('falha no envio do pedido devolve a reserva, para a próxima resposta tentar', async () => {
+  it('falha no envio do pedido vira erro relatado, não exceção', async () => {
     const d = respondendo({
       segueAConta: vi.fn().mockResolvedValue(false),
       sendDm: vi.fn().mockRejectedValue(new Error('Meta respondeu 400')),
     });
-    await processEvent(dm(), d);
-    expect(d.releaseFollowUp).toHaveBeenCalledWith(500, -1);
+    const resultado = await processEvent(dm(), d);
+    expect(resultado.outcome).toBe('error');
   });
 });
