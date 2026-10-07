@@ -17,6 +17,7 @@ import { mesclarPassos } from '@/lib/automations/passos';
 import type { MatchMode } from '@/lib/matching';
 import type { TipoDeGatilho } from '@/lib/repo/types';
 import { lerVariacoes } from '@/lib/automations/variacoes';
+import { ACAO_CONFERIR_SEGUIR } from '@/lib/automations/acoes';
 
 /**
  * Variações de mensagem. A regra é linha em branco separa — ver
@@ -130,7 +131,15 @@ export async function salvarAutomacao(formData: FormData) {
       position: 2,
       kind: 'dm_nao_segue' as const,
       variants: linhas(formData.getAll('textosNaoSegue')),
-      buttons: [],
+      /*
+       * O botão de conferir não tem endereço: ele devolve o clique para cá, e
+       * aí a conta é perguntada de novo ao Instagram. Sem ele, a única forma de
+       * a pessoa dizer "já segui" é digitando — e metade some antes disso.
+       */
+      buttons: (() => {
+        const titulo = String(formData.get('botaoConferirSeguir') ?? '').trim();
+        return titulo.length > 0 ? [{ title: titulo.slice(0, 20), acao: ACAO_CONFERIR_SEGUIR }] : [];
+      })(),
     },
     {
       position: 3,

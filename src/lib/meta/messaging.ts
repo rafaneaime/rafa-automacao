@@ -1,11 +1,22 @@
 import { metaPost } from './client';
 
-export type Button = { title: string; url: string };
+/**
+ * Um botão da mensagem.
+ *
+ * Com `url`, leva a pessoa para fora. Com `acao`, não leva a lugar nenhum: o
+ * clique volta para cá como evento, e é assim que um botão "já estou seguindo"
+ * consegue existir. Os dois juntos não fazem sentido, e o link ganha.
+ */
+export type Button = { title: string; url?: string; acao?: string };
+
+const PAYLOAD_MAXIMO = 1000;
 
 export function buildMessagePayload(text: string, buttons: Button[]): unknown {
-  const withUrl = buttons.filter((b) => b.url && b.url.length > 0);
+  const uteis = buttons.filter(
+    (b) => (b.url && b.url.length > 0) || (b.acao && b.acao.length > 0 && b.acao.length <= PAYLOAD_MAXIMO),
+  );
 
-  if (withUrl.length === 0) return { text };
+  if (uteis.length === 0) return { text };
 
   // Botão vai junto do texto de propósito: a private reply é a nossa única
   // chamada. Uma segunda mensagem cairia fora da janela de 24h (erro #10).
@@ -15,11 +26,11 @@ export function buildMessagePayload(text: string, buttons: Button[]): unknown {
       payload: {
         template_type: 'button',
         text,
-        buttons: withUrl.map((b) => ({
-          type: 'web_url',
-          url: b.url,
-          title: b.title,
-        })),
+        buttons: uteis.map((b) =>
+          b.url && b.url.length > 0
+            ? { type: 'web_url', url: b.url, title: b.title }
+            : { type: 'postback', payload: b.acao, title: b.title },
+        ),
       },
     },
   };

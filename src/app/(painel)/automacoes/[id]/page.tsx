@@ -278,7 +278,8 @@ export default async function EditorPage({
                 resposta (&ldquo;responde aqui que eu te mando&rdquo;) e deixe o
                 link para a <strong>Continuação da conversa</strong>, logo
                 abaixo. Escreva o pedido de seguir aqui, e quem ainda não seguir
-                recebe ele no lugar da continuação, uma vez só.
+                recebe ele no lugar da continuação — de novo a cada resposta,
+                até seguir.
               </p>
               <CamposDeVariacoes
                 name="textosNaoSegue"
@@ -287,6 +288,23 @@ export default async function EditorPage({
                 className={CAMPO}
                 rotuloDeAdicionar="Acrescentar outra versão"
               />
+              <label className="mt-3 block text-sm text-tinta-media">
+                Botão de conferir (opcional)
+                <input
+                  name="botaoConferirSeguir"
+                  defaultValue={naoSegue?.buttons[0]?.title ?? ''}
+                  placeholder="Já estou seguindo"
+                  maxLength={20}
+                  className={`${CAMPO} mt-1`}
+                />
+              </label>
+              <p className="mt-2 text-sm text-tinta-fraca">
+                Este botão não leva a lugar nenhum: ao tocar nele, a pessoa
+                avisa que seguiu e a conta é conferida na hora. Se seguiu mesmo,
+                ela recebe a continuação; se não, recebe este texto de novo.
+                Sem o botão, ela precisa digitar uma resposta — e boa parte some
+                antes disso. O Instagram aceita até 20 caracteres no título.
+              </p>
               <p className="mt-3 text-sm text-tinta-media">
                 Se o Instagram não responder se a pessoa segue, a conversa corre
                 normalmente. Quando a consulta falha, quem ficaria sem o material

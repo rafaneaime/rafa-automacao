@@ -36,6 +36,14 @@ export type MessageEvent = {
   mid: string | null;
   /** `null` quando é DM comum. Ver `RespostaDeStory`. */
   story: RespostaDeStory | null;
+  /**
+   * O que a pessoa clicou, quando foi clique e não texto.
+   *
+   * Botão de ação não leva a lugar nenhum: ele volta para cá dizendo o que a
+   * pessoa quis. É o que permite um botão "já estou seguindo" — sem ele, a
+   * única forma de a pessoa dizer qualquer coisa é digitando.
+   */
+  acao?: string | null;
 };
 
 export type NormalizedEvent = CommentEvent | MessageEvent;
@@ -78,9 +86,25 @@ function parseMessaging(accountIgId: string, item: unknown): MessageEvent | null
   const m = asRecord(item);
   if (!m) return null;
 
-  const message = asRecord(m.message);
   const sender = asRecord(m.sender);
-  if (!message || !sender) return null;
+  if (!sender) return null;
+
+  /*
+   * Clique em botão de ação chega em `postback`, não em `message`: não há
+   * texto nenhum, só o que a pessoa escolheu. Vira um evento de mensagem com
+   * texto vazio e a ação preenchida, para seguir o mesmo caminho de quem
+   * respondeu digitando — é a mesma conversa, com outro teclado.
+   */
+  const postback = asRecord(m.postback);
+  if (postback && !m.message) {
+    const fromId = asString(sender.id);
+    const acao = asString(postback.payload);
+    if (!fromId || !acao) return null;
+    return { kind: 'message', accountIgId, fromId, text: '', mid: asString(postback.mid), story: null, acao };
+  }
+
+  const message = asRecord(m.message);
+  if (!message) return null;
 
   // Echo é a mensagem que nós mesmos enviamos, devolvida pelo Meta.
   if (message.is_echo === true) return null;
