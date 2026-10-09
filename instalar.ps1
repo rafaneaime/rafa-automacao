@@ -119,6 +119,23 @@ function CriarOuPedirBanco($nome) {
   return $uri
 }
 
+<#
+  Como ChamarApi, mas devolve $null em vez de parar tudo.
+
+  Serve para as perguntas cuja resposta "nao existe" e informacao, e nao
+  defeito: o repositorio ja criado numa tentativa anterior, por exemplo.
+#>
+function TentarApi($metodo, $url, $cabecalhos, $corpo) {
+  try {
+    $parametros = @{ Method = $metodo; Uri = $url; Headers = $cabecalhos; ErrorAction = 'Stop' }
+    if ($null -ne $corpo) {
+      $parametros.Body = ($corpo | ConvertTo-Json -Depth 10 -Compress)
+      $parametros.ContentType = 'application/json'
+    }
+    return Invoke-RestMethod @parametros
+  } catch { return $null }
+}
+
 function ChamarApi($metodo, $url, $cabecalhos, $corpo) {
   try {
     $parametros = @{ Method = $metodo; Uri = $url; Headers = $cabecalhos; ErrorAction = 'Stop' }
@@ -185,19 +202,64 @@ $eu = ChamarApi 'GET' 'https://api.vercel.com/v2/user' $cabecalhoVercel $null
 Passo "Vercel: $($eu.user.username)"
 
 Titulo "Criando a sua copia do codigo"
-$copia = ChamarApi 'POST' "https://api.github.com/repos/$modelo/generate" $cabecalhoGitHub @{
-  owner = $usuario.login; name = $nomeRepo; private = $true
-  description = 'Minha instalacao'
+
+<#
+  Uma tentativa anterior pode ter criado o repositorio e parado depois - na
+  conexao da Vercel com o GitHub, por exemplo. Recomecar do zero obrigaria a
+  pessoa a apagar o repositorio na mao, no meio da sessao, so para o instalador
+  aceitar continuar. Se o que esta la veio do nosso modelo, ele serve.
+
+  A conferencia e pelo `template_repository`: repositorio com o mesmo nome que
+  veio de outro lugar nao e nosso, e sobrescrever o trabalho de alguem para
+  seguir em frente seria pior que parar.
+#>
+$copia = TentarApi 'GET' "https://api.github.com/repos/$($usuario.login)/$nomeRepo" $cabecalhoGitHub $null
+if ($copia) {
+  if ($copia.template_repository.full_name -ne $modelo) {
+    Erro "voce ja tem um repositorio chamado '$nomeRepo' que nao veio deste sistema. Renomeie ou apague esse repositorio e rode de novo."
+  }
+  Passo "repositorio ja existia, de uma tentativa anterior: $($copia.full_name)"
+} else {
+  $copia = ChamarApi 'POST' "https://api.github.com/repos/$modelo/generate" $cabecalhoGitHub @{
+    owner = $usuario.login; name = $nomeRepo; private = $true
+    description = 'Minha instalacao'
+  }
+  Passo "repositorio: $($copia.full_name)"
 }
-Passo "repositorio: $($copia.full_name)"
 
 Titulo "Criando o projeto na Vercel"
-$projeto = ChamarApi 'POST' 'https://api.vercel.com/v11/projects' $cabecalhoVercel @{
-  name = $nomeProjeto
-  framework = 'nextjs'
-  gitRepository = @{ type = 'github'; repo = $copia.full_name }
+
+<#
+  O projeto tambem pode ter sobrado de uma tentativa anterior.
+
+  E o erro mais provavel aqui nao e erro de digitacao: a Vercel so enxerga um
+  repositorio do GitHub depois que a conta dela e ligada a conta do GitHub. Sem
+  isso ela responde "repository couldn't be found", que manda a pessoa procurar
+  um erro de nome que nao existe.
+#>
+$projeto = TentarApi 'GET' "https://api.vercel.com/v9/projects/$nomeProjeto" $cabecalhoVercel $null
+if ($projeto) {
+  Passo "projeto ja existia, de uma tentativa anterior: $($projeto.name)"
+} else {
+  $projeto = TentarApi 'POST' 'https://api.vercel.com/v11/projects' $cabecalhoVercel @{
+    name = $nomeProjeto
+    framework = 'nextjs'
+    gitRepository = @{ type = 'github'; repo = $copia.full_name }
+  }
+  if (-not $projeto) {
+    Write-Host ""
+    Write-Host "A Vercel nao achou o repositorio '$($copia.full_name)'."
+    Write-Host "Quase sempre e isto: a conta da Vercel ainda nao esta ligada ao GitHub."
+    Write-Host ""
+    Write-Host "Como resolver, na conta dela:"
+    Write-Host "  1. abra vercel.com e clique em Add New -> Project"
+    Write-Host "  2. em Import Git Repository, clique em Continue with GitHub e autorize"
+    Write-Host "  3. se o GitHub perguntar quais repositorios, escolha All repositories"
+    Write-Host "  4. volte aqui e rode o instalador de novo - o que ja foi criado e reaproveitado"
+    Erro "a Vercel precisa enxergar o GitHub antes de continuar."
+  }
+  Passo "projeto: $($projeto.name)"
 }
-Passo "projeto: $($projeto.name)"
 
 Titulo "Guardando as variaveis"
 $variaveis = @(
