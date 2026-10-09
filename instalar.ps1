@@ -14,7 +14,11 @@ $ErrorActionPreference = 'Stop'
 
 function Titulo($texto) { Write-Host ""; Write-Host "== $texto" }
 function Passo($texto)  { Write-Host "   $texto" }
-function Erro($texto)   { Write-Host ""; Write-Host "PROBLEMA: $texto"; exit 1 }
+# `exit` mataria a janela inteira: rodando por `irm | iex`, o script e a sessao
+# sao a mesma coisa, e o PowerShell fecha levando a mensagem junto. Quem
+# instala ve a tela sumir e conclui que "nao aconteceu nada". `throw` para o
+# script, mostra o motivo e deixa o console de pe.
+function Erro($texto)   { Write-Host ""; Write-Host "PROBLEMA: $texto"; Write-Host ""; throw $texto }
 
 function PerguntaSecreta($rotulo) {
   $segura = Read-Host -Prompt "   $rotulo" -AsSecureString
@@ -52,6 +56,69 @@ function Segredo {
   } finally { $gerador.Dispose() }
 }
 
+<#
+  O banco, criado aqui dentro.
+
+  Achar a connection string no Neon e o passo que mais atrasa a sessao: ela
+  aparece uma vez na tela de boas-vindas e depois some atras de um botao que
+  muda de lugar a cada reforma do painel. Quem ja tem a string cola e segue;
+  quem nao tem cola uma chave de API e o banco nasce aqui, com o nome do
+  projeto.
+
+  A chave da API nao fica em lugar nenhum: serve a esta chamada e some quando o
+  PowerShell fecha. Ela da acesso total a conta Neon da pessoa, entao a tela
+  diz, em voz alta, para revoga-la junto com as outras duas no fim.
+#>
+function CriarOuPedirBanco($nome) {
+  Titulo "O banco de dados"
+  Passo "Se voce ja tem a connection string do Neon, cole agora."
+  Passo "Se nao tiver, deixe em branco e aperte Enter: eu crio o banco."
+  $colada = PerguntaSecreta "Connection string do Neon (ou Enter para eu criar)"
+  if ($colada) {
+    if (-not $colada.StartsWith('postgres')) {
+      Erro "isso nao parece uma connection string. Ela comeca com postgresql://"
+    }
+    return $colada
+  }
+
+  Passo ""
+  Passo "Vou criar o banco. Para isso preciso de uma chave da API do Neon:"
+  Passo "  console.neon.tech -> seu avatar -> Account settings -> API keys"
+  Passo "  -> Create new API key. Copie e cole aqui."
+  Passo "Essa chave abre a sua conta Neon inteira. Revogue no fim, junto com"
+  Passo "as outras duas."
+  $chaveNeon = PerguntaSecreta "Chave da API do Neon"
+  if (-not $chaveNeon) { Erro "sem a chave eu nao consigo criar o banco. Cole a connection string ou a chave." }
+  $cabecalhoNeon = @{ Authorization = "Bearer $chaveNeon"; Accept = 'application/json' }
+
+  # A conta pode estar numa organizacao, e desde 2026 a criacao exige dizer em
+  # qual. Com uma so, escolho sozinho; com varias, pergunto -- adivinhar poria
+  # o banco de um cliente na organizacao de outro.
+  $orgs = ChamarApi 'GET' 'https://console.neon.tech/api/v2/users/me/organizations' $cabecalhoNeon $null
+  $lista = @($orgs.organizations)
+  if ($lista.Count -eq 0) { Erro "essa chave nao enxerga nenhuma organizacao no Neon." }
+  $org = $lista[0]
+  if ($lista.Count -gt 1) {
+    Passo "Sua conta tem mais de uma organizacao no Neon:"
+    for ($i = 0; $i -lt $lista.Count; $i++) { Passo "  $($i + 1). $($lista[$i].name)" }
+    $qual = Pergunta "Digite o numero da organizacao"
+    $indice = 0
+    if (-not [int]::TryParse($qual, [ref]$indice) -or $indice -lt 1 -or $indice -gt $lista.Count) {
+      Erro "responda com um dos numeros da lista."
+    }
+    $org = $lista[$indice - 1]
+  }
+  Passo "organizacao: $($org.name)"
+
+  $criado = ChamarApi 'POST' 'https://console.neon.tech/api/v2/projects' $cabecalhoNeon @{
+    project = @{ name = $nome; org_id = $org.id }
+  }
+  $uri = $criado.connection_uris[0].connection_uri
+  if (-not $uri) { Erro "o Neon criou o projeto mas nao devolveu a connection string. Pegue no painel e rode de novo." }
+  Passo "banco criado: $($criado.project.name)"
+  return $uri
+}
+
 function ChamarApi($metodo, $url, $cabecalhos, $corpo) {
   try {
     $parametros = @{ Method = $metodo; Uri = $url; Headers = $cabecalhos; ErrorAction = 'Stop' }
@@ -73,7 +140,7 @@ Write-Host "Publica o sistema na SUA conta. Nada fica na conta de outra pessoa."
 Write-Host ""
 Write-Host "Antes de comecar voce precisa ter, nesta ordem:"
 Write-Host "  1. o app do Instagram criado no portal do Meta, com o token gerado"
-Write-Host "  2. um projeto no Neon, com a connection string copiada"
+Write-Host "  2. uma conta no Neon (o banco eu crio aqui, se voce deixar)"
 Write-Host "  3. um token do GitHub e um token da Vercel (o passo a passo explica)"
 Write-Host ""
 
@@ -94,7 +161,7 @@ $tokenGitHub = PerguntaSecreta "Token do GitHub"
 $tokenVercel = PerguntaSecreta "Token da Vercel"
 
 Titulo "Os dados do seu sistema"
-$conexaoBanco = PerguntaSecreta "Connection string do Neon"
+$conexaoBanco = CriarOuPedirBanco $nomeProjeto
 $igAppId      = Pergunta "IG_APP_ID (numero do app do Instagram)"
 $igAppSecret  = PerguntaSecreta "IG_APP_SECRET"
 $accessToken  = PerguntaSecreta "ACCESS_TOKEN (o token gerado no portal)"
@@ -196,5 +263,6 @@ Write-Host "   Guarde o Verify Token: ele nao aparece de novo nesta tela."
 Write-Host "   Depois de assinar os campos do webhook, comente na sua publicacao"
 Write-Host "   com a segunda conta do Instagram para testar."
 Write-Host ""
-Write-Host "   Agora pode revogar os dois tokens que voce colou no comeco."
+Write-Host "   Agora pode revogar as chaves que voce colou no comeco: GitHub, Vercel"
+Write-Host "   e, se tiver usado, a do Neon."
 Write-Host ""
