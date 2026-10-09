@@ -129,7 +129,10 @@ function TentarApi($metodo, $url, $cabecalhos, $corpo) {
   try {
     $parametros = @{ Method = $metodo; Uri = $url; Headers = $cabecalhos; ErrorAction = 'Stop' }
     if ($null -ne $corpo) {
-      $parametros.Body = ($corpo | ConvertTo-Json -Depth 10 -Compress)
+      # `-InputObject`, e nao `$corpo | ConvertTo-Json`: o pipe desembrulha uma
+      # lista de um item so e manda objeto onde a API espera lista. Com oito
+      # variaveis ninguem via; com uma, a gravacao seria recusada.
+      $parametros.Body = (ConvertTo-Json -InputObject $corpo -Depth 10 -Compress)
       $parametros.ContentType = 'application/json'
     }
     return Invoke-RestMethod @parametros
@@ -140,7 +143,10 @@ function ChamarApi($metodo, $url, $cabecalhos, $corpo) {
   try {
     $parametros = @{ Method = $metodo; Uri = $url; Headers = $cabecalhos; ErrorAction = 'Stop' }
     if ($null -ne $corpo) {
-      $parametros.Body = ($corpo | ConvertTo-Json -Depth 10 -Compress)
+      # `-InputObject`, e nao `$corpo | ConvertTo-Json`: o pipe desembrulha uma
+      # lista de um item so e manda objeto onde a API espera lista. Com oito
+      # variaveis ninguem via; com uma, a gravacao seria recusada.
+      $parametros.Body = (ConvertTo-Json -InputObject $corpo -Depth 10 -Compress)
       $parametros.ContentType = 'application/json'
     }
     return Invoke-RestMethod @parametros
@@ -176,17 +182,6 @@ Passo "Elas autorizam este instalador a criar o repositorio e publicar."
 Passo "Ao terminar, voce revoga as duas. O texto colado nao aparece na tela."
 $tokenGitHub = PerguntaSecreta "Token do GitHub"
 $tokenVercel = PerguntaSecreta "Token da Vercel"
-
-Titulo "Os dados do seu sistema"
-$conexaoBanco = CriarOuPedirBanco $nomeProjeto
-$igAppId      = Pergunta "IG_APP_ID (numero do app do Instagram)"
-$igAppSecret  = PerguntaSecreta "IG_APP_SECRET"
-$accessToken  = PerguntaSecreta "ACCESS_TOKEN (o token gerado no portal)"
-$senhaPainel  = PerguntaSecreta "Senha que voce quer usar para entrar no painel"
-$emailContato = Pergunta "E-mail de contato (aparece na politica de privacidade)"
-
-$verifyToken = Segredo
-$cronSecret  = Segredo
 
 $cabecalhoGitHub = @{
   Authorization = "Bearer $tokenGitHub"
@@ -261,20 +256,52 @@ if ($projeto) {
   Passo "projeto: $($projeto.name)"
 }
 
-Titulo "Guardando as variaveis"
-$variaveis = @(
-  @{ key = 'IG_APP_ID';      value = $igAppId },
-  @{ key = 'IG_APP_SECRET';  value = $igAppSecret },
-  @{ key = 'VERIFY_TOKEN';   value = $verifyToken },
-  @{ key = 'ACCESS_TOKEN';   value = $accessToken },
-  @{ key = 'DATABASE_URL';   value = $conexaoBanco },
-  @{ key = 'PANEL_PASSWORD'; value = $senhaPainel },
-  @{ key = 'CRON_SECRET';    value = $cronSecret },
-  @{ key = 'EMAIL_CONTATO';  value = $emailContato }
-) | ForEach-Object { @{ key = $_.key; value = $_.value; type = 'encrypted'; target = @('production') } }
+<#
+  Perguntar so o que ainda nao esta gravado.
 
-ChamarApi 'POST' "https://api.vercel.com/v10/projects/$($projeto.id)/env?upsert=true" $cabecalhoVercel $variaveis | Out-Null
-Passo "$($variaveis.Count) variaveis gravadas"
+  Uma instalacao que para no meio e roda de novo pedia os oito campos outra
+  vez, inclusive os que ja estavam salvos. Pior que o incomodo: o VERIFY_TOKEN
+  era sorteado de novo a cada execucao, e quem ja tinha colado o anterior no
+  portal do Meta ficava com um webhook que para de validar sem dizer por que.
+
+  Por isso a pergunta vem DEPOIS de o projeto existir: so entao da para saber o
+  que ja esta la.
+#>
+Titulo "Os dados do seu sistema"
+$gravadas = @{}
+$atuais = TentarApi 'GET' "https://api.vercel.com/v9/projects/$($projeto.id)/env?decrypt=true" $cabecalhoVercel $null
+foreach ($e in @($atuais.envs)) {
+  if ($e.target -contains 'production' -and $e.key) { $gravadas[$e.key] = $e.value }
+}
+if ($gravadas.Count -gt 0) { Passo "$($gravadas.Count) valor(es) ja estavam gravados; nao vou pedir de novo." }
+
+function JaTem($chave) { return $gravadas.ContainsKey($chave) }
+
+$novos = @{}
+if (-not (JaTem 'DATABASE_URL'))   { $novos['DATABASE_URL']   = CriarOuPedirBanco $nomeProjeto }
+if (-not (JaTem 'IG_APP_ID'))      { $novos['IG_APP_ID']      = Pergunta "IG_APP_ID (numero do app do Instagram)" }
+if (-not (JaTem 'IG_APP_SECRET'))  { $novos['IG_APP_SECRET']  = PerguntaSecreta "IG_APP_SECRET" }
+if (-not (JaTem 'ACCESS_TOKEN'))   { $novos['ACCESS_TOKEN']   = PerguntaSecreta "ACCESS_TOKEN (o token gerado no portal)" }
+if (-not (JaTem 'PANEL_PASSWORD')) { $novos['PANEL_PASSWORD'] = PerguntaSecreta "Senha que voce quer usar para entrar no painel" }
+if (-not (JaTem 'EMAIL_CONTATO'))  { $novos['EMAIL_CONTATO']  = Pergunta "E-mail de contato (aparece na politica de privacidade)" }
+
+# Os dois segredos que ninguem digita. Sorteados so na primeira vez: trocar o
+# VERIFY_TOKEN de uma instalacao que ja existe quebra o webhook ja configurado.
+if (-not (JaTem 'VERIFY_TOKEN')) { $novos['VERIFY_TOKEN'] = Segredo }
+if (-not (JaTem 'CRON_SECRET'))  { $novos['CRON_SECRET']  = Segredo }
+
+$verifyToken = if ($novos.ContainsKey('VERIFY_TOKEN')) { $novos['VERIFY_TOKEN'] } else { $gravadas['VERIFY_TOKEN'] }
+
+Titulo "Guardando as variaveis"
+if ($novos.Count -eq 0) {
+  Passo "nada a gravar: tudo ja estava no lugar."
+} else {
+  $variaveis = $novos.GetEnumerator() | ForEach-Object {
+    @{ key = $_.Key; value = $_.Value; type = 'encrypted'; target = @('production') }
+  }
+  ChamarApi 'POST' "https://api.vercel.com/v10/projects/$($projeto.id)/env?upsert=true" $cabecalhoVercel @($variaveis) | Out-Null
+  Passo "$($novos.Count) variavel(is) gravada(s)"
+}
 
 Titulo "Publicando"
 $publicacao = ChamarApi 'POST' 'https://api.vercel.com/v13/deployments' $cabecalhoVercel @{
@@ -319,9 +346,17 @@ Write-Host ""
 Write-Host "   Falta so o webhook, no portal do Meta. Cole estes dois valores:"
 Write-Host ""
 Write-Host "   Callback URL:    $endereco/api/webhook"
-Write-Host "   Verify Token:    $verifyToken"
-Write-Host ""
-Write-Host "   Guarde o Verify Token: ele nao aparece de novo nesta tela."
+if ($verifyToken) {
+  Write-Host "   Verify Token:    $verifyToken"
+  Write-Host ""
+  Write-Host "   Guarde o Verify Token: ele nao aparece de novo nesta tela."
+} else {
+  Write-Host "   Verify Token:    o mesmo da instalacao anterior"
+  Write-Host ""
+  Write-Host "   Nao consegui ler o valor de volta. Se voce nao tem mais ele,"
+  Write-Host "   apague a variavel VERIFY_TOKEN no painel da Vercel e rode este"
+  Write-Host "   instalador de novo: um valor novo e sorteado e aparece aqui."
+}
 Write-Host "   Depois de assinar os campos do webhook, comente na sua publicacao"
 Write-Host "   com a segunda conta do Instagram para testar."
 Write-Host ""
