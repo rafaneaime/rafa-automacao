@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { processEvent, RATE_LIMIT_PER_HOUR } from '@/lib/process-event';
+import { processEvent, AVISO_SEM_CONFIRMAR, RATE_LIMIT_PER_HOUR } from '@/lib/process-event';
 import type { ProcessDeps } from '@/lib/process-event';
 import type { Automation } from '@/lib/repo/types';
 import type { CommentEvent, MessageEvent, RespostaDeStory } from '@/lib/parse-event';
@@ -921,5 +921,75 @@ describe('a trava de seguir é escolha de quem desenha', () => {
     const d = respondendo(true);
     await processEvent(dm(), d);
     expect(d.sendDm).toHaveBeenCalledWith('conta', 'fulana', 'me segue primeiro', [], 'tok', 10);
+  });
+});
+
+describe('a trava de seguir tem fim', () => {
+  const dm = (over: Partial<MessageEvent> = {}): MessageEvent => ({
+    kind: 'message', story: null, mid: 'mid-y',
+    accountIgId: 'conta', fromId: 'fulana', text: 'cadê o link?', ...over,
+  });
+  const comPedido = automation({
+    exigirSeguir: true,
+    steps: [
+      ...automation().steps,
+      { id: 3, position: 2, kind: 'dm_nao_segue', variants: ['me segue primeiro'], buttons: [] },
+      { id: 4, position: 3, kind: 'follow_up', variants: ['aqui está o link'], buttons: [] },
+    ],
+  });
+  const insistindo = (jaPedidos: number[]) => deps({
+    findSentDelivery: vi.fn().mockResolvedValue({ id: 500, automationId: 10 }),
+    findAutomationById: vi.fn().mockResolvedValue(comPedido),
+    sentFollowUps: vi.fn().mockResolvedValue(jaPedidos),
+    segueAConta: vi.fn().mockResolvedValue(false),
+  });
+
+  it('conta cada pedido numa posição própria, que não colide com a sequência', async () => {
+    const d = insistindo([]);
+    await processEvent(dm(), d);
+    expect(d.claimFollowUp).toHaveBeenCalledWith(500, -1);
+    const segunda = insistindo([-1]);
+    await processEvent(dm(), segunda);
+    expect(segunda.claimFollowUp).toHaveBeenCalledWith(500, -2);
+  });
+
+  /*
+   * O caso que motivou: uma pessoa clicou quatro vezes em "já estou seguindo"
+   * em quinze minutos, o Instagram respondeu `false` nas quatro, e ela foi
+   * embora sem o material dizendo que tinha seguido. Não dá para saber daqui
+   * quem estava certo — dá para saber que repetir a quarta vez não ajudou.
+   */
+  it('na terceira insistência entrega, com a dúvida dita na mensagem', async () => {
+    const d = insistindo([-1, -2, -3]);
+    await processEvent(dm(), d);
+    const texto = (d.sendDm as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(texto).toContain(AVISO_SEM_CONFIRMAR);
+    expect(texto).toContain('aqui está o link');
+  });
+
+  it('antes da terceira, continua segurando', async () => {
+    for (const ja of [[], [-1], [-1, -2]]) {
+      const d = insistindo(ja);
+      await processEvent(dm(), d);
+      expect((d.sendDm as ReturnType<typeof vi.fn>).mock.calls[0][2]).toBe('me segue primeiro');
+    }
+  });
+
+  it('quem segue recebe sem aviso nenhum, mesmo tendo insistido antes', async () => {
+    const d = deps({
+      findSentDelivery: vi.fn().mockResolvedValue({ id: 500, automationId: 10 }),
+      findAutomationById: vi.fn().mockResolvedValue(comPedido),
+      sentFollowUps: vi.fn().mockResolvedValue([-1, -2, -3]),
+      segueAConta: vi.fn().mockResolvedValue(true),
+    });
+    await processEvent(dm(), d);
+    expect((d.sendDm as ReturnType<typeof vi.fn>).mock.calls[0][2]).toBe('aqui está o link');
+  });
+
+  it('o mesmo clique reentregue não gasta duas tentativas', async () => {
+    const d = insistindo([]);
+    (d.claimFollowUp as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    expect(await processEvent(dm(), d)).toEqual({ outcome: 'duplicate', automationId: 10 });
+    expect(d.sendDm).not.toHaveBeenCalled();
   });
 });

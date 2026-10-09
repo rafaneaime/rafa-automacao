@@ -8,6 +8,28 @@ import { janelaDaEntrega } from './automations/janela';
 
 export const RATE_LIMIT_PER_HOUR = 750;
 
+/**
+ * Quantas vezes pedir para seguir antes de entregar assim mesmo.
+ *
+ * Em 09/10/2026 uma pessoa comentou, recebeu o pedido e clicou quatro vezes em
+ * "já estou seguindo" em quinze minutos. O Instagram respondeu `false` nas
+ * quatro, e ela foi embora sem o material — dizendo que tinha seguido.
+ *
+ * Nao da para saber daqui quem estava certo: ela pode ter seguido outro perfil,
+ * ter desfeito depois, ou a Meta pode ter demorado a atualizar o campo. O que
+ * da para saber e que, nas tres hipoteses, repetir o mesmo pedido pela quarta
+ * vez nao ajudou ninguem.
+ *
+ * Entao a trava vale, e tem fim. Quem insiste tres vezes recebe o conteudo com
+ * uma frase que admite a duvida — e o dono do painel ve isso nos Logs.
+ */
+export const PEDIDOS_ANTES_DE_LIBERAR = 3;
+
+/** Dito na primeira pessoa porque e a conta de quem fala que esta duvidando. */
+export const AVISO_SEM_CONFIRMAR =
+  'Não consegui confirmar aqui se você já está me seguindo, mas não vou te ' +
+  'deixar esperando:';
+
 
 export type ProcessDeps = {
   findAccount(
@@ -437,12 +459,23 @@ async function tentarFollowUp(
    * que é nosso.
    */
   const passoNaoSegue = automation.steps.find((s) => s.kind === 'dm_nao_segue');
+  // Cada pedido ja feito ocupa uma posicao negativa, que posicao de passo
+  // nunca usa. E assim que a contagem sobrevive entre uma mensagem e outra.
+  const pedidosFeitos = enviados.filter((posicao) => posicao < 0).length;
+  let semConfirmar = false;
   if (automation.exigirSeguir && passoNaoSegue && passoNaoSegue.variants.length > 0 && deps.segueAConta) {
     const segue = await deps.segueAConta(event.fromId, account.accessToken).catch(() => null);
-    if (segue === false) {
+    if (segue === false && pedidosFeitos >= PEDIDOS_ANTES_DE_LIBERAR) {
+      semConfirmar = true;
+    } else if (segue === false) {
       // O teto por hora vale aqui também: o pedido é mensagem como as outras.
       if ((await deps.countRecentSent(account.id)) >= RATE_LIMIT_PER_HOUR) {
         return { outcome: 'throttled', automationId: automation.id };
+      }
+      // A reserva conta a tentativa e, de quebra, impede que a reentrega do
+      // mesmo clique peca duas vezes.
+      if (!(await deps.claimFollowUp(delivery.id, -(pedidosFeitos + 1)))) {
+        return { outcome: 'duplicate', automationId: automation.id };
       }
       const contactId = await deps.upsertContact(account.id, event.fromId, null);
       try {
@@ -466,6 +499,7 @@ async function tentarFollowUp(
         );
         return { outcome: 'sent', automationId: automation.id };
       } catch (erro) {
+        await deps.releaseFollowUp(delivery.id, -(pedidosFeitos + 1));
         return { outcome: 'error', automationId: automation.id, error: String(erro) };
       }
     }
@@ -501,13 +535,16 @@ async function tentarFollowUp(
   );
 
   try {
+    const texto = aplicarVariaveis(
+      deps.pick(passo.variants.filter((v) => v.trim().length > 0)),
+      await quemE(contactId, deps),
+    );
     await deps.sendDm(
       account.igUserId,
       event.fromId,
-      aplicarVariaveis(
-        deps.pick(passo.variants.filter((v) => v.trim().length > 0)),
-        await quemE(contactId, deps),
-      ),
+      // O aviso vai na mesma mensagem, e nao numa segunda: a segunda cairia
+      // fora da janela de 24h do Meta e falharia com erro #10.
+      semConfirmar ? `${AVISO_SEM_CONFIRMAR}\n\n${texto}` : texto,
       passo.buttons,
       account.accessToken,
       automation.id,
