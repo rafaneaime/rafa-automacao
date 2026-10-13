@@ -48,10 +48,26 @@ export function CriarChave({ temConta }: { temConta: boolean }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ nome, escopos }),
       });
-      const dados = (await resposta.json()) as RespostaDaCriacao;
+      // O `.json()` solto estourava quando a resposta não era JSON — e aí a
+      // mensagem vinha do catch, falando em tentar de novo. Foi assim que um
+      // 404 passou por problema de rede durante uma instalação inteira: até
+      // 13/10/2026 a rota desta tela não viajava no pacote da base.
+      const dados = (await resposta
+        .json()
+        .catch(() => null)) as RespostaDaCriacao | null;
 
-      if (!resposta.ok || !dados.ok) {
-        setErro(dados.ok ? 'Não foi possível criar a chave.' : dados.erro);
+      if (!resposta.ok || !dados?.ok) {
+        if (dados && !dados.ok) setErro(dados.erro);
+        else if (resposta.status === 404) {
+          setErro(
+            'Esta versão do painel não tem a rota que cria chaves. Rode a ' +
+              'atualização do painel e tente de novo.',
+          );
+        } else {
+          setErro(
+            `Não foi possível criar a chave (o servidor respondeu ${resposta.status}).`,
+          );
+        }
         return;
       }
 
