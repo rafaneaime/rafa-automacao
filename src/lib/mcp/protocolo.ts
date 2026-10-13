@@ -141,41 +141,68 @@ export function decodificarValorDeCabecalho(valor: string | null): string | null
 }
 
 /** `localhost`, `127.0.0.1`, `[::1]` — com ou sem porta. */
-function hostLocal(host: string): boolean {
-  const semPorta = host.replace(/:\d+$/, '').toLowerCase();
-  return semPorta === 'localhost' || semPorta === '127.0.0.1' || semPorta === '[::1]';
+/**
+ * De onde o conector do Claude chama. Subdomínio conta: o pedido não sai do
+ * navegador de ninguém, sai do servidor da Anthropic.
+ */
+const CASAS_DO_CLAUDE = ['claude.ai', 'claude.com'];
+
+function daAnthropic(host: string): boolean {
+  return CASAS_DO_CLAUDE.some((casa) => host === casa || host.endsWith(`.${casa}`));
+}
+
+/**
+ * Outras origens que a instalação aceita, separadas por vírgula.
+ *
+ * Existe para que um cliente novo — outro painel, outro aplicativo de IA — não
+ * dependa de um deploy meu para funcionar. Quem instalou acrescenta a origem
+ * nas variáveis de ambiente e pronto.
+ */
+function origensDaInstalacao(): string[] {
+  return (process.env.MCP_ORIGENS_PERMITIDAS ?? '')
+    .split(',')
+    .map((parte) => parte.trim().toLowerCase())
+    .filter((parte) => parte.length > 0);
 }
 
 /**
  * Origem permitida, contra DNS rebinding.
  *
- * A especificação manda recusar `Origin` inválida, e o ataque que ela descreve
- * é concreto: um servidor MCP escutando em `localhost`, sem autenticação,
- * alcançado por uma página qualquer que o navegador resolveu para 127.0.0.1.
- * Para esse caso a trava fica.
+ * O ataque que a especificação descreve é concreto: uma página qualquer manda
+ * o navegador resolver o domínio dela para 127.0.0.1 e falar com o servidor MCP
+ * que roda na máquina de quem instalou. O `Origin` é a única coisa no pedido
+ * que o atacante não escolhe — o navegador escreve, e por isso a conferência é
+ * nele.
  *
- * Para a instalação em servidor público ela não protege de nada e atrapalha.
- * Aqui não existe autoridade ambiente: quem chama precisa mandar a chave em
- * `Authorization`, que nenhum navegador anexa sozinho. Uma página de terceiro
- * nem chega a tentar — `content-type: application/json` obriga preflight, e
- * este servidor não responde OPTIONS. O que a trava recusava, na prática, era
- * cliente legítimo: em 13/10/2026 um comprador ligou o conector do Claude e
- * recebeu "Origem não permitida", porque o pedido sai do servidor da Anthropic
- * com `Origin: https://claude.ai`.
+ * Ela foi escrita como "mesma origem ou nada" e recusava o conector do Claude,
+ * que chama do servidor da Anthropic com `Origin: https://claude.ai`. A
+ * primeira correção deixou passar quando o app não estava em `localhost` — e
+ * isso é errado: no rebinding o `Host` que chega é o domínio do atacante, então
+ * a trava se desligava sozinha exatamente no caso que ela cobre. Decidir pelo
+ * `Host` é decidir por um cabeçalho que vem de fora.
+ *
+ * Agora a lista é fechada e vive aqui dentro: mesma origem, as casas da
+ * Anthropic, e o que a instalação acrescentar em `MCP_ORIGENS_PERMITIDAS`.
+ * Qualquer outra é recusada, com ou sem `localhost` no meio.
  */
 export function origemPermitida(origin: string | null, hostDoApp: string | null): boolean {
   // Cliente MCP de terminal não manda Origin, e exigi-lo recusaria justamente
-  // quem vai usar isto.
+  // quem vai usar isto. Quem pode omitir o cabeçalho também pode forjar
+  // qualquer valor nele: a conferência só vale para quem é navegador, e para
+  // esse a presença do `Origin` é obrigatória.
   if (!origin) return true;
-  if (!hostDoApp) return false;
 
-  let host: string;
+  let endereco: URL;
   try {
-    host = new URL(origin).host;
+    endereco = new URL(origin);
   } catch {
     return false; // Origin que nem URL é não merece o benefício da dúvida.
   }
 
-  if (host === hostDoApp) return true;
-  return !hostLocal(hostDoApp);
+  const host = endereco.host.toLowerCase();
+  if (hostDoApp && host === hostDoApp.toLowerCase()) return true;
+  if (daAnthropic(endereco.hostname.toLowerCase())) return true;
+
+  const permitidas = origensDaInstalacao();
+  return permitidas.includes(host) || permitidas.includes(endereco.origin.toLowerCase());
 }

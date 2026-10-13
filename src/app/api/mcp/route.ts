@@ -33,7 +33,15 @@ export const DELETE = GET;
 
 export async function POST(request: Request) {
   if (!origemPermitida(request.headers.get('origin'), request.headers.get('host'))) {
-    return json(erro(null, CODIGO.requisicaoInvalida, 'Origem não permitida.'), 403);
+    return json(
+      erro(
+        null,
+        CODIGO.requisicaoInvalida,
+        'Origem não permitida. Se este cliente é seu, acrescente a origem dele em ' +
+          'MCP_ORIGENS_PERMITIDAS, nas variáveis de ambiente do projeto.',
+      ),
+      403,
+    );
   }
 
   let corpo: unknown;

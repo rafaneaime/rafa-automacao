@@ -124,20 +124,34 @@ describe('origemPermitida', () => {
     expect(origemPermitida('https://app.vercel.app', 'app.vercel.app')).toBe(true);
   });
 
-  // O conector do Claude chama do servidor da Anthropic, com
-  // `Origin: https://claude.ai`. Recusar isso deixava de fora o cliente que o
-  // produto existe para atender — e não protegia nada: a chave vai em
-  // `Authorization`, que navegador nenhum anexa sozinho.
-  it('aceita outra origem quando o app está num host público', () => {
+  // O conector chama do servidor da Anthropic, com `Origin: https://claude.ai`.
+  // Recusar isso deixava de fora o cliente que o produto existe para atender.
+  it('aceita as casas da Anthropic, inclusive subdomínio', () => {
     expect(origemPermitida('https://claude.ai', 'app.vercel.app')).toBe(true);
+    expect(origemPermitida('https://api.claude.com', 'app.vercel.app')).toBe(true);
   });
 
-  // Em `localhost` o ataque de DNS rebinding é real: a página de terceiro
-  // alcança a porta local do computador de quem instalou.
-  it('recusa outra origem quando o app roda na máquina de quem instalou', () => {
+  // A lista não pode depender do `Host`: num ataque de DNS rebinding o `Host`
+  // que chega é o domínio do atacante, e decidir por ele desligaria a trava
+  // justamente no caso que ela cobre.
+  it('recusa origem desconhecida, com ou sem localhost no Host', () => {
+    expect(origemPermitida('https://site-do-atacante.com', 'app.vercel.app')).toBe(false);
     expect(origemPermitida('https://site-do-atacante.com', 'localhost:3000')).toBe(false);
-    expect(origemPermitida('https://site-do-atacante.com', '127.0.0.1:3000')).toBe(false);
-    expect(origemPermitida('http://localhost:3000', 'localhost:3000')).toBe(true);
+    expect(origemPermitida('https://claude.ai.site-do-atacante.com', 'app.vercel.app')).toBe(false);
+    expect(origemPermitida('https://site-do-atacante.com', null)).toBe(false);
+  });
+
+  it('aceita o que a instalação acrescentar em MCP_ORIGENS_PERMITIDAS', () => {
+    const antes = process.env.MCP_ORIGENS_PERMITIDAS;
+    process.env.MCP_ORIGENS_PERMITIDAS = 'https://meu-painel.com, outro.app';
+    try {
+      expect(origemPermitida('https://meu-painel.com', 'app.vercel.app')).toBe(true);
+      expect(origemPermitida('https://outro.app', 'app.vercel.app')).toBe(true);
+      expect(origemPermitida('https://terceiro.app', 'app.vercel.app')).toBe(false);
+    } finally {
+      if (antes === undefined) delete process.env.MCP_ORIGENS_PERMITIDAS;
+      else process.env.MCP_ORIGENS_PERMITIDAS = antes;
+    }
   });
 
   it('recusa Origin que nem URL é', () => {
