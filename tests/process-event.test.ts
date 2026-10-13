@@ -993,3 +993,46 @@ describe('a trava de seguir tem fim', () => {
     expect(d.sendDm).not.toHaveBeenCalled();
   });
 });
+
+describe('quem responde quando duas automações casam', () => {
+  const doPost = (over: Partial<Automation>) => automation({ mediaId: 'post-novo', ...over });
+
+  /*
+   * O caso real: uma automação de "todos os posts" criada meses antes, com a
+   * palavra "quero", roubava o comentário de uma campanha nova amarrada a um
+   * post. A pessoa recebia o link errado, e o painel registrava disparo com
+   * sucesso — da automação errada.
+   */
+  it('a do post ganha da que vale para todos, mesmo sendo mais nova', async () => {
+    const d = deps({
+      findPublishedAutomations: vi.fn().mockResolvedValue([
+        automation({ id: 10, mediaId: null, keywords: ['quero'] }),
+        doPost({ id: 25, keywords: [], matchMode: 'any' }),
+      ]),
+    });
+    expect(await processEvent(comment({ text: 'quero esse tutorial', mediaId: 'post-novo' }), d))
+      .toEqual({ outcome: 'sent', automationId: 25 });
+  });
+
+  it('em outro post, a de todos os posts continua respondendo', async () => {
+    const d = deps({
+      findPublishedAutomations: vi.fn().mockResolvedValue([
+        automation({ id: 10, mediaId: null, keywords: ['quero'] }),
+        doPost({ id: 25, keywords: [], matchMode: 'any' }),
+      ]),
+    });
+    expect(await processEvent(comment({ text: 'quero esse tutorial', mediaId: 'outro-post' }), d))
+      .toEqual({ outcome: 'sent', automationId: 10 });
+  });
+
+  it('entre duas do mesmo alcance, a mais antiga continua ganhando', async () => {
+    const d = deps({
+      findPublishedAutomations: vi.fn().mockResolvedValue([
+        doPost({ id: 25, keywords: ['quero'] }),
+        doPost({ id: 26, keywords: ['quero'] }),
+      ]),
+    });
+    expect(await processEvent(comment({ text: 'quero', mediaId: 'post-novo' }), d))
+      .toEqual({ outcome: 'sent', automationId: 25 });
+  });
+});

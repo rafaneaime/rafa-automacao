@@ -194,15 +194,31 @@ async function semQuebrar(
   }
 }
 
+/**
+ * Qual automação responde este comentário.
+ *
+ * Quem amarrou uma automação a UM post escolheu aquele post de propósito, e
+ * espera que ela mande nele. Antes a lista vinha por id e a mais antiga ganhava:
+ * uma automação de "todos os posts" criada meses atrás roubava o comentário de
+ * uma campanha nova, e a pessoa recebia o link errado sem ninguém entender por
+ * quê — o painel registrava disparo com sucesso, da automação errada.
+ *
+ * Então a do post vem primeiro. Entre duas do mesmo alcance, a mais antiga
+ * continua ganhando: é o que já acontecia, e mudar isso mexeria em automações
+ * que funcionam hoje.
+ */
 function findMatch(
   automations: Automation[],
   text: string,
   mediaId: string | null,
 ): Automation | undefined {
-  return automations.find(
-    (a) =>
-      (a.mediaId === null || a.mediaId === mediaId) &&
-      matchesKeyword(text, a.keywords, a.matchMode),
+  const casa = (a: Automation) =>
+    (a.mediaId === null || a.mediaId === mediaId) &&
+    matchesKeyword(text, a.keywords, a.matchMode);
+
+  return (
+    automations.find((a) => a.mediaId !== null && casa(a)) ??
+    automations.find(casa)
   );
 }
 
