@@ -120,10 +120,29 @@ describe('origemPermitida', () => {
     expect(origemPermitida(null, 'app.vercel.app')).toBe(true);
   });
 
-  it('aceita mesma origem e recusa outra', () => {
+  it('aceita mesma origem', () => {
     expect(origemPermitida('https://app.vercel.app', 'app.vercel.app')).toBe(true);
-    expect(origemPermitida('https://site-do-atacante.com', 'app.vercel.app')).toBe(false);
+  });
+
+  // O conector do Claude chama do servidor da Anthropic, com
+  // `Origin: https://claude.ai`. Recusar isso deixava de fora o cliente que o
+  // produto existe para atender — e não protegia nada: a chave vai em
+  // `Authorization`, que navegador nenhum anexa sozinho.
+  it('aceita outra origem quando o app está num host público', () => {
+    expect(origemPermitida('https://claude.ai', 'app.vercel.app')).toBe(true);
+  });
+
+  // Em `localhost` o ataque de DNS rebinding é real: a página de terceiro
+  // alcança a porta local do computador de quem instalou.
+  it('recusa outra origem quando o app roda na máquina de quem instalou', () => {
+    expect(origemPermitida('https://site-do-atacante.com', 'localhost:3000')).toBe(false);
+    expect(origemPermitida('https://site-do-atacante.com', '127.0.0.1:3000')).toBe(false);
+    expect(origemPermitida('http://localhost:3000', 'localhost:3000')).toBe(true);
+  });
+
+  it('recusa Origin que nem URL é', () => {
     expect(origemPermitida('lixo', 'app.vercel.app')).toBe(false);
+    expect(origemPermitida('lixo', 'localhost:3000')).toBe(false);
   });
 });
 

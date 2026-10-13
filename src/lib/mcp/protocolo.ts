@@ -140,19 +140,42 @@ export function decodificarValorDeCabecalho(valor: string | null): string | null
   }
 }
 
+/** `localhost`, `127.0.0.1`, `[::1]` — com ou sem porta. */
+function hostLocal(host: string): boolean {
+  const semPorta = host.replace(/:\d+$/, '').toLowerCase();
+  return semPorta === 'localhost' || semPorta === '127.0.0.1' || semPorta === '[::1]';
+}
+
 /**
  * Origem permitida, contra DNS rebinding.
  *
- * A especificação obriga a recusar `Origin` inválida com 403. Requisição sem
- * `Origin` é o caso normal aqui: cliente MCP de terminal não manda esse
- * cabeçalho, e exigi-lo recusaria justamente quem vai usar isto.
+ * A especificação manda recusar `Origin` inválida, e o ataque que ela descreve
+ * é concreto: um servidor MCP escutando em `localhost`, sem autenticação,
+ * alcançado por uma página qualquer que o navegador resolveu para 127.0.0.1.
+ * Para esse caso a trava fica.
+ *
+ * Para a instalação em servidor público ela não protege de nada e atrapalha.
+ * Aqui não existe autoridade ambiente: quem chama precisa mandar a chave em
+ * `Authorization`, que nenhum navegador anexa sozinho. Uma página de terceiro
+ * nem chega a tentar — `content-type: application/json` obriga preflight, e
+ * este servidor não responde OPTIONS. O que a trava recusava, na prática, era
+ * cliente legítimo: em 13/10/2026 um comprador ligou o conector do Claude e
+ * recebeu "Origem não permitida", porque o pedido sai do servidor da Anthropic
+ * com `Origin: https://claude.ai`.
  */
 export function origemPermitida(origin: string | null, hostDoApp: string | null): boolean {
+  // Cliente MCP de terminal não manda Origin, e exigi-lo recusaria justamente
+  // quem vai usar isto.
   if (!origin) return true;
   if (!hostDoApp) return false;
+
+  let host: string;
   try {
-    return new URL(origin).host === hostDoApp;
+    host = new URL(origin).host;
   } catch {
-    return false;
+    return false; // Origin que nem URL é não merece o benefício da dúvida.
   }
+
+  if (host === hostDoApp) return true;
+  return !hostLocal(hostDoApp);
 }
