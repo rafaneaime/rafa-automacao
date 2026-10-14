@@ -34,6 +34,62 @@ function Pergunta($rotulo) {
   return $texto.Trim()
 }
 
+<#
+  A ficha: os dados da instalação preenchidos antes, num arquivo.
+
+  Uma instalação inteira levava 1h20, e a maior parte não era o portal do
+  Meta: era abrir aba, colar valor, conferir no guia se estava no passo certo,
+  voltar. Preenchida a ficha, o instalador não pergunta mais nada e roda
+  sozinho.
+
+  Lê-se assim, antes do `irm`:
+
+    $env:FICHA="C:\caminho\ficha-da-maria.txt"
+
+  Pelo ambiente, e não por parâmetro, porque o jeito documentado de rodar isto
+  é `irm ... | iex` — e script executado assim não recebe parâmetro.
+
+  O valor é tudo que vem depois do PRIMEIRO dois-pontos: connection string e
+  token têm `:` no meio, e cortar no último arrancaria pedaço do segredo.
+#>
+function LerFicha($caminho) {
+  $ficha = @{}
+  if (-not $caminho) { return $ficha }
+  if (-not (Test-Path $caminho)) { Erro "nao achei a ficha em '$caminho'. Confira o caminho." }
+
+  foreach ($linha in (Get-Content -Path $caminho -Encoding UTF8)) {
+    $texto = $linha.Trim()
+    if ($texto -eq '' -or $texto.StartsWith('#')) { continue }
+    $corte = $texto.IndexOf(':')
+    if ($corte -lt 1) { continue }
+    $chave = $texto.Substring(0, $corte).Trim()
+    $valor = $texto.Substring($corte + 1).Trim()
+    if ($valor -ne '') { $ficha[$chave] = $valor }
+  }
+  return $ficha
+}
+
+$FICHA = LerFicha $env:FICHA
+$COM_FICHA = $null -ne $env:FICHA -and $env:FICHA -ne ''
+
+<#
+  Um valor: da ficha, ou perguntado.
+
+  Com ficha, campo que falta é erro na hora, com o nome do campo — e não uma
+  pergunta no meio de uma execução que era para ser sozinha.
+#>
+function Campo($chave, $rotulo, $secreto) {
+  if ($FICHA.ContainsKey($chave)) { return $FICHA[$chave] }
+  if ($COM_FICHA) { Erro "falta '$chave' na ficha ($env:FICHA)." }
+  if ($secreto) { return PerguntaSecreta $rotulo }
+  return Pergunta $rotulo
+}
+
+function CampoOpcional($chave) {
+  if ($FICHA.ContainsKey($chave)) { return $FICHA[$chave] }
+  return $null
+}
+
 # 48 caracteres de acaso, para o VERIFY_TOKEN e o CRON_SECRET — que ninguém
 # precisa inventar nem decorar.
 #
@@ -73,7 +129,10 @@ function CriarOuPedirBanco($nome) {
   Titulo "O banco de dados"
   Passo "Se voce ja tem a connection string do Neon, cole agora."
   Passo "Se nao tiver, deixe em branco e aperte Enter: eu crio o banco."
-  $colada = PerguntaSecreta "Connection string do Neon (ou Enter para eu criar)"
+  $colada = CampoOpcional 'DATABASE_URL'
+  if (-not $colada -and -not $COM_FICHA) {
+    $colada = PerguntaSecreta "Connection string do Neon (ou Enter para eu criar)"
+  }
   if ($colada) {
     if (-not $colada.StartsWith('postgres')) {
       Erro "isso nao parece uma connection string. Ela comeca com postgresql://"
@@ -87,7 +146,7 @@ function CriarOuPedirBanco($nome) {
   Passo "  -> Create new API key. Copie e cole aqui."
   Passo "Essa chave abre a sua conta Neon inteira. Revogue no fim, junto com"
   Passo "as outras duas."
-  $chaveNeon = PerguntaSecreta "Chave da API do Neon"
+  $chaveNeon = Campo 'NEON_API_KEY' "Chave da API do Neon" $true
   if (-not $chaveNeon) { Erro "sem a chave eu nao consigo criar o banco. Cole a connection string ou a chave." }
   $cabecalhoNeon = @{ Authorization = "Bearer $chaveNeon"; Accept = 'application/json' }
 
@@ -98,7 +157,17 @@ function CriarOuPedirBanco($nome) {
   $lista = @($orgs.organizations)
   if ($lista.Count -eq 0) { Erro "essa chave nao enxerga nenhuma organizacao no Neon." }
   $org = $lista[0]
-  if ($lista.Count -gt 1) {
+  $orgDaFicha = CampoOpcional 'NEON_ORG'
+  if ($orgDaFicha) {
+    $achada = $lista | Where-Object { $_.name -eq $orgDaFicha } | Select-Object -First 1
+    if (-not $achada) {
+      Erro "nao achei a organizacao '$orgDaFicha' no Neon. As que existem: $(($lista | ForEach-Object { $_.name }) -join ', ')."
+    }
+    $org = $achada
+  } elseif ($lista.Count -gt 1 -and $COM_FICHA) {
+    # Adivinhar poria o banco de um cliente na organizacao de outro.
+    Erro "a conta Neon tem mais de uma organizacao. Escreva qual em 'NEON_ORG' na ficha: $(($lista | ForEach-Object { $_.name }) -join ', ')."
+  } elseif ($lista.Count -gt 1) {
     Passo "Sua conta tem mais de uma organizacao no Neon:"
     for ($i = 0; $i -lt $lista.Count; $i++) { Passo "  $($i + 1). $($lista[$i].name)" }
     $qual = Pergunta "Digite o numero da organizacao"
@@ -168,20 +237,33 @@ Write-Host "  3. um token do GitHub e um token da Vercel (o passo a passo explic
 Write-Host ""
 
 Titulo "O que vamos instalar"
-Passo "1. MEUCHAT  - comentario vira DM, e o painel basico"
-Passo "2. Radar    - a Plataforma completa (precisa do convite da organizacao aceito)"
-$escolha = Pergunta "Digite 1 ou 2"
-if ($escolha -ne '1' -and $escolha -ne '2') { Erro "responda 1 ou 2." }
-$modelo = if ($escolha -eq '2') { 'adeus-mensalidade/plataforma' } else { 'rafaneaime/rafa-automacao' }
-$nomeRepo = if ($escolha -eq '2') { 'plataforma' } else { 'meu-chat' }
+$produto = CampoOpcional 'produto'
+if ($produto) {
+  $produto = $produto.ToLower()
+  if ($produto -ne 'meuchat' -and $produto -ne 'radar') {
+    Erro "o campo 'produto' da ficha precisa ser meuchat ou radar."
+  }
+} else {
+  Passo "1. MEUCHAT  - comentario vira DM, e o painel basico"
+  Passo "2. Radar    - a Plataforma completa (precisa do convite da organizacao aceito)"
+  $escolha = Pergunta "Digite 1 ou 2"
+  if ($escolha -ne '1' -and $escolha -ne '2') { Erro "responda 1 ou 2." }
+  $produto = if ($escolha -eq '2') { 'radar' } else { 'meuchat' }
+}
+$ehRadar = $produto -eq 'radar'
+$modelo = if ($ehRadar) { 'adeus-mensalidade/plataforma' } else { 'rafaneaime/rafa-automacao' }
+$nomeRepo = CampoOpcional 'nome'
+if (-not $nomeRepo) { $nomeRepo = if ($ehRadar) { 'plataforma' } else { 'meu-chat' } }
 $nomeProjeto = $nomeRepo
-Passo "modelo: $modelo"
+Passo "produto: $produto"
+Passo "nome:    $nomeRepo"
+Passo "modelo:  $modelo"
 
 Titulo "As duas chaves temporarias"
 Passo "Elas autorizam este instalador a criar o repositorio e publicar."
 Passo "Ao terminar, voce revoga as duas. O texto colado nao aparece na tela."
-$tokenGitHub = PerguntaSecreta "Token do GitHub"
-$tokenVercel = PerguntaSecreta "Token da Vercel"
+$tokenGitHub = Campo 'GITHUB_TOKEN' "Token do GitHub" $true
+$tokenVercel = Campo 'VERCEL_TOKEN' "Token da Vercel" $true
 
 $cabecalhoGitHub = @{
   Authorization = "Bearer $tokenGitHub"
@@ -279,11 +361,25 @@ function JaTem($chave) { return $gravadas.ContainsKey($chave) }
 
 $novos = @{}
 if (-not (JaTem 'DATABASE_URL'))   { $novos['DATABASE_URL']   = CriarOuPedirBanco $nomeProjeto }
-if (-not (JaTem 'IG_APP_ID'))      { $novos['IG_APP_ID']      = Pergunta "IG_APP_ID (numero do app do Instagram)" }
-if (-not (JaTem 'IG_APP_SECRET'))  { $novos['IG_APP_SECRET']  = PerguntaSecreta "IG_APP_SECRET" }
-if (-not (JaTem 'ACCESS_TOKEN'))   { $novos['ACCESS_TOKEN']   = PerguntaSecreta "ACCESS_TOKEN (o token gerado no portal)" }
-if (-not (JaTem 'PANEL_PASSWORD')) { $novos['PANEL_PASSWORD'] = PerguntaSecreta "Senha que voce quer usar para entrar no painel" }
-if (-not (JaTem 'EMAIL_CONTATO'))  { $novos['EMAIL_CONTATO']  = Pergunta "E-mail de contato (aparece na politica de privacidade)" }
+if (-not (JaTem 'IG_APP_ID'))      { $novos['IG_APP_ID']      = Campo 'IG_APP_ID' "IG_APP_ID (numero do app do Instagram)" $false }
+if (-not (JaTem 'IG_APP_SECRET'))  { $novos['IG_APP_SECRET']  = Campo 'IG_APP_SECRET' "IG_APP_SECRET" $true }
+if (-not (JaTem 'ACCESS_TOKEN'))   { $novos['ACCESS_TOKEN']   = Campo 'ACCESS_TOKEN' "ACCESS_TOKEN (o token gerado no portal)" $true }
+if (-not (JaTem 'EMAIL_CONTATO'))  { $novos['EMAIL_CONTATO']  = Campo 'EMAIL_CONTATO' "E-mail de contato (aparece na politica de privacidade)" $false }
+
+# A senha em branco na ficha nao e esquecimento: e "sorteia uma". Ela aparece
+# no fim, junto com o endereco, para ser passada adiante de uma vez so.
+$senhaSorteada = $false
+if (-not (JaTem 'PANEL_PASSWORD')) {
+  $daFicha = CampoOpcional 'PANEL_PASSWORD'
+  if ($daFicha) {
+    $novos['PANEL_PASSWORD'] = $daFicha
+  } elseif ($COM_FICHA) {
+    $novos['PANEL_PASSWORD'] = Segredo
+    $senhaSorteada = $true
+  } else {
+    $novos['PANEL_PASSWORD'] = PerguntaSecreta "Senha que voce quer usar para entrar no painel"
+  }
+}
 
 # Os dois segredos que ninguem digita. Sorteados so na primeira vez: trocar o
 # VERIFY_TOKEN de uma instalacao que ja existe quebra o webhook ja configurado.
@@ -339,27 +435,60 @@ if (-not $curto) { Erro "a publicacao terminou, mas a Vercel nao devolveu o ende
 $endereco = "https://$curto"
 
 Titulo "Pronto"
-Write-Host ""
-Write-Host "   Seu painel:      $endereco"
-Write-Host "   Entre com a senha que voce escolheu agora ha pouco."
-Write-Host ""
-Write-Host "   Falta so o webhook, no portal do Meta. Cole estes dois valores:"
-Write-Host ""
-Write-Host "   Callback URL:    $endereco/api/webhook"
-if ($verifyToken) {
-  Write-Host "   Verify Token:    $verifyToken"
-  Write-Host ""
-  Write-Host "   Guarde o Verify Token: ele nao aparece de novo nesta tela."
+
+<#
+  O resumo tambem vai para um arquivo, ao lado da ficha.
+
+  Sao seis valores para repassar — endereco, senha, os dois do webhook — e ate
+  aqui eles so existiam rolando na tela do PowerShell. Numa instalacao feita
+  para outra pessoa, isso vira copia a mao, e copia a mao de senha erra.
+
+  O arquivo TEM a senha dentro. Fica na maquina de quem instalou, de
+  proposito: e para ser mandado para a dona da instalacao e apagado depois.
+#>
+$senha = if ($novos.ContainsKey('PANEL_PASSWORD')) { $novos['PANEL_PASSWORD'] } else { $null }
+
+$linhas = @()
+$linhas += "Instalacao: $nomeProjeto ($produto)"
+$linhas += ""
+$linhas += "Painel:        $endereco"
+if ($senha) {
+  $linhas += "Senha:         $senha"
 } else {
-  Write-Host "   Verify Token:    o mesmo da instalacao anterior"
-  Write-Host ""
-  Write-Host "   Nao consegui ler o valor de volta. Se voce nao tem mais ele,"
-  Write-Host "   apague a variavel VERIFY_TOKEN no painel da Vercel e rode este"
-  Write-Host "   instalador de novo: um valor novo e sorteado e aparece aqui."
+  $linhas += "Senha:         a mesma de antes (ja estava gravada)"
 }
-Write-Host "   Depois de assinar os campos do webhook, comente na sua publicacao"
-Write-Host "   com a segunda conta do Instagram para testar."
+$linhas += ""
+$linhas += "No portal do Meta, em Webhooks:"
+$linhas += "Callback URL:  $endereco/api/webhook"
+if ($verifyToken) {
+  $linhas += "Verify Token:  $verifyToken"
+} else {
+  $linhas += "Verify Token:  o mesmo da instalacao anterior"
+}
+$linhas += "Campos:        comments, live_comments, messages, messaging_postbacks, messaging_seen"
+$linhas += ""
+$linhas += "Depois: abra o painel, va em Configuracao e clique em Conectar conta."
+$linhas += "Depois disso, comente na publicacao com outra conta para testar."
+
+foreach ($linha in $linhas) { Write-Host "   $linha" }
+
+if ($COM_FICHA) {
+  $resumo = Join-Path (Split-Path -Parent $env:FICHA) "$nomeProjeto-instalacao.txt"
+  try {
+    Set-Content -Path $resumo -Value $linhas -Encoding UTF8
+    Write-Host ""
+    Write-Host "   Isto tambem esta em: $resumo"
+    Write-Host "   Mande para a pessoa e apague o arquivo: a senha esta dentro."
+  } catch {
+    Write-Host ""
+    Write-Host "   Nao consegui salvar o resumo em arquivo. Copie da tela."
+  }
+}
+
 Write-Host ""
-Write-Host "   Agora pode revogar as chaves que voce colou no comeco: GitHub, Vercel"
-Write-Host "   e, se tiver usado, a do Neon."
+if ($senhaSorteada) {
+  Write-Host "   A senha acima foi sorteada por mim: ela nao existe em outro lugar."
+}
+Write-Host "   Agora pode revogar as chaves usadas: GitHub, Vercel e, se tiver"
+Write-Host "   usado, a do Neon."
 Write-Host ""

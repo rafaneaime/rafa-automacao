@@ -1,0 +1,44 @@
+# Ficha de instalacao — Adeus Mensalidade
+#
+# Preencha uma por pessoa, salve com outro nome e rode:
+#
+#   $env:FICHA="C:\caminho\ficha-da-maria.txt"; irm https://raw.githubusercontent.com/rafaneaime/rafa-automacao/main/instalar.ps1 | iex
+#
+# O instalador nao pergunta nada do que estiver aqui. O que ficar em branco
+# ele pede na tela, como antes.
+#
+# Linha que comeca com # e comentario. O valor e tudo que vem depois do
+# primeiro dois-pontos, entao connection string e token com ":" dentro cabem.
+
+# meuchat ou radar. Radar exige o convite da organizacao aceito nesta conta.
+produto: meuchat
+
+# Nome do repositorio e do projeto. Vira o endereco: nome.vercel.app
+# Em branco: meu-chat (ou plataforma, no Radar).
+nome:
+
+# --- O app do Instagram, do portal do Meta ---
+IG_APP_ID:
+IG_APP_SECRET:
+# O token gerado em Casos de uso > Personalizar > Configuracao da API com
+# login do Instagram > Gerar token. Comeca com IGAA e passa de cem caracteres.
+ACCESS_TOKEN:
+
+# --- O painel ---
+# Aparece na politica de privacidade, para quem quiser pedir remocao dos dados.
+EMAIL_CONTATO:
+# Em branco: eu sorteio uma senha e mostro no fim.
+PANEL_PASSWORD:
+
+# --- O banco ---
+# Uma das duas. Com a connection string eu uso ela; sem ela, crio o banco no
+# Neon com a chave da API. A chave abre a conta Neon inteira: revogue no fim.
+DATABASE_URL:
+NEON_API_KEY:
+# So quando a conta Neon tem mais de uma organizacao. Escreva o nome exato.
+NEON_ORG:
+
+# --- As chaves temporarias ---
+# Da conta de quem esta instalando. Revogue as duas quando terminar.
+GITHUB_TOKEN:
+VERCEL_TOKEN:
