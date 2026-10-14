@@ -5,6 +5,7 @@ import {
   conferirCabecalhos,
   decodificarValorDeCabecalho,
   origemPermitida,
+  paraEstruturado,
   resposta,
   erro,
   CODIGO,
@@ -206,5 +207,28 @@ describe('formato JSON-RPC', () => {
       id: null,
       error: { code: CODIGO.parseError, message: 'x' },
     });
+  });
+});
+
+// "structuredContent: Input should be a valid dictionary" foi o que um
+// comprador recebeu ao pedir a lista de automações. A consulta funcionou; o
+// cliente recusou a nossa resposta.
+describe('paraEstruturado', () => {
+  it('embrulha lista, que é o que quase toda ferramenta devolve', () => {
+    expect(paraEstruturado([{ id: 1 }, { id: 2 }])).toEqual({ itens: [{ id: 1 }, { id: 2 }] });
+    expect(paraEstruturado([])).toEqual({ itens: [] });
+  });
+
+  it('deixa objeto como está', () => {
+    expect(paraEstruturado({ id: 7, nome: 'teste' })).toEqual({ id: 7, nome: 'teste' });
+  });
+
+  it('nunca devolve algo que não seja objeto', () => {
+    for (const valor of [null, undefined, 3, 'texto', true]) {
+      const saida = paraEstruturado(valor);
+      expect(Array.isArray(saida)).toBe(false);
+      expect(typeof saida).toBe('object');
+      expect(saida).not.toBeNull();
+    }
   });
 });

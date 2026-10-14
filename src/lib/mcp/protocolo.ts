@@ -206,3 +206,22 @@ export function origemPermitida(origin: string | null, hostDoApp: string | null)
   const permitidas = origensDaInstalacao();
   return permitidas.includes(host) || permitidas.includes(endereco.origin.toLowerCase());
 }
+
+/**
+ * O `structuredContent` de um resultado precisa ser um objeto.
+ *
+ * A especificação fala em objeto, e os clientes conferem: em 14/10/2026 um
+ * comprador pediu "lista minhas automações" no Claude e recebeu
+ * "structuredContent: Input should be a valid dictionary". A consulta tinha
+ * funcionado; o que o cliente recusou foi a nossa resposta, porque listagem
+ * devolve lista, e lista não é objeto. Três das cinco ferramentas do MEUCHAT
+ * devolvem lista — ou seja, quase tudo que o conector fazia.
+ *
+ * A lista entra como `itens` em vez de o campo sumir: o modelo continua
+ * recebendo a resposta estruturada, e não só o texto.
+ */
+export function paraEstruturado(dados: unknown): Record<string, unknown> {
+  if (Array.isArray(dados)) return { itens: dados };
+  if (typeof dados === 'object' && dados !== null) return dados as Record<string, unknown>;
+  return { valor: dados };
+}

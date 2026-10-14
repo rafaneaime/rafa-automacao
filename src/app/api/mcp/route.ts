@@ -8,6 +8,7 @@ import {
   ehRequisicaoValida,
   erro,
   origemPermitida,
+  paraEstruturado,
   resposta,
   type Requisicao,
 } from '@/lib/mcp/protocolo';
@@ -158,7 +159,7 @@ export async function POST(request: Request) {
         // só mostram `content`, e um resultado invisível é um resultado que o
         // modelo não usa.
         content: [{ type: 'text', text: JSON.stringify(dados, null, 2) }],
-        structuredContent: dados,
+        structuredContent: paraEstruturado(dados),
         isError: false,
       }),
     );
