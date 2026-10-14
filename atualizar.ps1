@@ -6,6 +6,10 @@
 # organização, e "Create Deployment" em vez de "Redeploy". Errar qualquer um
 # deixa o painel abrindo errado, zerado ou sem o Radar no menu.
 #
+# Quem já está no Radar roda o mesmo comando para receber a versão nova: o
+# script percebe que o painel já usa a sua cópia e, em vez de criar outra,
+# traz para dentro dela os arquivos que mudaram no modelo.
+#
 # O que este script NÃO faz, de propósito: não toca no banco, não apaga
 # variável, não cria projeto novo. O painel que existe continua o mesmo, com os
 # mesmos contatos e as mesmas automações — só o código que ele roda muda.
@@ -59,11 +63,90 @@ function TentarApi($metodo, $url, $cabecalhos, $corpo) {
   } catch { return $null }
 }
 
+# Traz os arquivos do modelo para dentro da copia que ja existe.
+#
+# Ate 14/10/2026 nao havia este caminho: quem ja estava no Radar e rodava o
+# script de novo recebia o codigo VELHO de volta, porque a copia e feita com
+# "Use this template", que nao guarda vinculo nenhum com a origem — nao ha
+# "Sync fork" para clicar, e republicar a copia so republica o que ja estava
+# nela.
+#
+# O conserto usa como o Git guarda arquivo: pelo conteudo. Dois arquivos
+# iguais tem o mesmo identificador nos dois repositorios, e o que nao mudou ja
+# esta dentro da copia desde o dia em que ela nasceu. Entao da para montar a
+# arvore inteira com os identificadores do modelo e enviar o conteudo so do
+# que mudou — normalmente dois ou tres arquivos.
+#
+# A arvore vai inteira, e nao por cima da que existe: arquivo que sumiu do
+# modelo tem que sumir da copia tambem, senao a instalacao acumula codigo que
+# ninguem mantem.
+function SincronizarComOModelo($cabecalhos, $modelo, $copia, $ramoModelo, $ramoCopia) {
+  # `git/trees/<ramo>` devolve em `sha` o identificador do COMMIT, nao o da
+  # arvore. Comparar esse valor entre dois repositorios nunca da igual, e a
+  # primeira versao disto gravava um commit vazio a cada execucao por causa
+  # disso. O identificador da arvore vem do commit, e esse sim e o mesmo nos
+  # dois lados quando o conteudo e o mesmo.
+  $commitModelo = ChamarApi 'GET' "https://api.github.com/repos/$modelo/commits/$ramoModelo" $cabecalhos $null
+  $commitCopia = ChamarApi 'GET' "https://api.github.com/repos/$copia/commits/$ramoCopia" $cabecalhos $null
+
+  if ($commitModelo.commit.tree.sha -eq $commitCopia.commit.tree.sha) {
+    Passo "a sua copia ja esta igual ao modelo: nada para trazer"
+    return $false
+  }
+
+  $doModelo = ChamarApi 'GET' "https://api.github.com/repos/$modelo/git/trees/$($commitModelo.commit.tree.sha)?recursive=1" $cabecalhos $null
+  if ($doModelo.truncated) { Erro "o modelo ficou grande demais para este caminho. Me chame." }
+  $daCopia = ChamarApi 'GET' "https://api.github.com/repos/$copia/git/trees/$($commitCopia.commit.tree.sha)?recursive=1" $cabecalhos $null
+
+  # Pelo identificador, nao pelo caminho: se QUALQUER arquivo da copia ja tem
+  # aquele conteudo, o objeto esta la e nao precisa subir de novo.
+  $existentes = New-Object 'System.Collections.Generic.HashSet[string]'
+  foreach ($item in $daCopia.tree) {
+    if ($item.type -eq 'blob') { [void]$existentes.Add($item.sha) }
+  }
+
+  $arquivosDoModelo = @($doModelo.tree | Where-Object { $_.type -eq 'blob' })
+  $faltando = @($arquivosDoModelo | Where-Object { -not $existentes.Contains($_.sha) })
+  Passo "arquivos novos ou alterados: $($faltando.Count)"
+
+  foreach ($arquivo in $faltando) {
+    $conteudo = ChamarApi 'GET' "https://api.github.com/repos/$modelo/git/blobs/$($arquivo.sha)" $cabecalhos $null
+    # A API devolve o conteudo quebrado em linhas e nao aceita de volta assim.
+    ChamarApi 'POST' "https://api.github.com/repos/$copia/git/blobs" $cabecalhos @{
+      content = ($conteudo.content -replace '\s', '')
+      encoding = 'base64'
+    } | Out-Null
+  }
+
+  $entradas = @($arquivosDoModelo | ForEach-Object {
+    @{ path = $_.path; mode = $_.mode; type = 'blob'; sha = $_.sha }
+  })
+  $arvore = ChamarApi 'POST' "https://api.github.com/repos/$copia/git/trees" $cabecalhos @{ tree = $entradas }
+
+  if ($arvore.sha -eq $commitCopia.commit.tree.sha) {
+    Passo "o conteudo ja era o mesmo: nada gravado"
+    return $false
+  }
+
+  $commit = ChamarApi 'POST' "https://api.github.com/repos/$copia/git/commits" $cabecalhos @{
+    message = 'Atualizacao do Radar'
+    tree = $arvore.sha
+    parents = @($commitCopia.sha)
+  }
+  ChamarApi 'PATCH' "https://api.github.com/repos/$copia/git/refs/heads/$ramoCopia" $cabecalhos @{
+    sha = $commit.sha
+  } | Out-Null
+
+  Passo "codigo novo gravado na sua copia"
+  return $true
+}
+
 $MODELO = 'adeus-mensalidade/plataforma'
 
 Write-Host ""
 Write-Host "Atualizacao para o Radar"
-Write-Host "Troca o codigo do painel que voce ja usa. O banco, os contatos e as"
+Write-Host "Serve para os dois casos: virar Radar pela primeira vez e trazer a"
+Write-Host "versao nova para um Radar que ja existe. O banco, os contatos e as"
 Write-Host "automacoes continuam onde estao - nada aqui apaga nada."
 Write-Host ""
 Write-Host "Antes de comecar: aceite o convite da organizacao que chegou no seu"
@@ -94,7 +177,8 @@ Passo "Vercel: $($eu.user.username)"
 # GitHub responde para repositório privado que o token não enxerga. O convite
 # não aceito é a causa em quase todos os casos.
 Titulo "Conferindo o acesso ao modelo do Radar"
-if (-not (TentarApi 'GET' "https://api.github.com/repos/$MODELO" $cabecalhoGitHub $null)) {
+$modeloInfo = TentarApi 'GET' "https://api.github.com/repos/$MODELO" $cabecalhoGitHub $null
+if (-not $modeloInfo) {
   Write-Host ""
   Write-Host "Nao consegui enxergar o modelo do Radar com a sua conta."
   Write-Host "Quase sempre e o convite da organizacao, que ainda nao foi aceito:"
@@ -123,38 +207,71 @@ if (-not [int]::TryParse($escolha, [ref]$indice) -or $indice -lt 1 -or $indice -
 $projeto = $lista[$indice - 1]
 Passo "escolhido: $($projeto.name)"
 
-Titulo "Criando a sua copia do Radar"
+Titulo "A sua copia do Radar"
 $nomeRepo = 'plataforma'
-# Pode ter sobrado de uma tentativa anterior. Se veio do nosso modelo, serve.
-$copia = TentarApi 'GET' "https://api.github.com/repos/$($usuario.login)/$nomeRepo" $cabecalhoGitHub $null
-if ($copia) {
-  if ($copia.template_repository.full_name -ne $MODELO) {
-    Erro "voce ja tem um repositorio chamado '$nomeRepo' que nao veio deste sistema. Renomeie ou apague esse repositorio e rode de novo."
+# A conta sai da string: aspas dentro de $() dentro de aspas nao sobrevivem
+# ao PowerShell 5.1, que e o que vem no Windows.
+$ligadoAgora = 'sem repositorio'
+if ($projeto.link) { $ligadoAgora = $projeto.link.org + '/' + $projeto.link.repo }
+
+# O painel ja pode estar ligado a uma copia do modelo — quem ja tem o Radar e
+# so quer a versao nova. Ai nao se cria nem se troca nada: o trabalho e trazer
+# o codigo para dentro da copia que ja esta ligada.
+$copia = $null
+$jaEraORadar = $false
+if ($projeto.link) {
+  $ligada = TentarApi 'GET' "https://api.github.com/repos/$ligadoAgora" $cabecalhoGitHub $null
+  if ($ligada -and $ligada.template_repository.full_name -eq $MODELO) {
+    $copia = $ligada
+    $jaEraORadar = $true
+    Passo "o seu painel ja usa a sua copia do Radar: $($copia.full_name)"
   }
-  Passo "ja existia, de uma tentativa anterior: $($copia.full_name)"
-} else {
-  # Private não é opcional: o código do Radar é de quem comprou.
-  $copia = ChamarApi 'POST' "https://api.github.com/repos/$MODELO/generate" $cabecalhoGitHub @{
-    owner = $usuario.login; name = $nomeRepo; private = $true
-    description = 'Meu Radar'
-  }
-  Passo "repositorio: $($copia.full_name)"
 }
 
-Titulo "Trocando o codigo do painel"
-# A conta sai da string: aspas dentro de $() dentro de aspas não sobrevivem
-# ao PowerShell 5.1, que é o que vem no Windows.
-$ligadoAgora = if ($projeto.link) { $projeto.link.org + '/' + $projeto.link.repo } else { 'sem repositorio' }
-Passo "de:   $ligadoAgora"
-Passo "para: $($copia.full_name)"
-$confirma = Pergunta "Digite SIM para trocar"
+if (-not $copia) {
+  # Pode ter sobrado de uma tentativa anterior. Se veio do nosso modelo, serve.
+  $copia = TentarApi 'GET' "https://api.github.com/repos/$($usuario.login)/$nomeRepo" $cabecalhoGitHub $null
+  if ($copia) {
+    if ($copia.template_repository.full_name -ne $MODELO) {
+      Erro "voce ja tem um repositorio chamado '$nomeRepo' que nao veio deste sistema. Renomeie ou apague esse repositorio e rode de novo."
+    }
+    Passo "ja existia, de uma tentativa anterior: $($copia.full_name)"
+  } else {
+    # Private nao e opcional: o codigo do Radar e de quem comprou.
+    $copia = ChamarApi 'POST' "https://api.github.com/repos/$MODELO/generate" $cabecalhoGitHub @{
+      owner = $usuario.login; name = $nomeRepo; private = $true
+      description = 'Meu Radar'
+    }
+    Passo "repositorio criado: $($copia.full_name)"
+  }
+}
+
+Titulo "O que vai acontecer"
+if ($jaEraORadar) {
+  Passo "trazer o codigo novo para $($copia.full_name) e publicar"
+} else {
+  Passo "de:   $ligadoAgora"
+  Passo "para: $($copia.full_name)"
+}
+Passo "o banco, os contatos, as automacoes e a sua senha ficam como estao"
+$confirma = Pergunta "Digite SIM para continuar"
 if ($confirma -ne 'SIM') { Erro "nada foi alterado." }
 
-TentarApi 'DELETE' "https://api.vercel.com/v9/projects/$($projeto.id)/link" $cabecalhoVercel $null | Out-Null
-ChamarApi 'POST' "https://api.vercel.com/v10/projects/$($projeto.id)/link" $cabecalhoVercel @{
-  type = 'github'; repo = $copia.full_name
-} | Out-Null
-Passo "trocado"
+Titulo "Trazendo o codigo novo"
+$ramoDoModelo = $modeloInfo.default_branch
+$ramoDaCopia = $copia.default_branch
+if (-not $ramoDoModelo) { $ramoDoModelo = 'main' }
+if (-not $ramoDaCopia) { $ramoDaCopia = 'main' }
+SincronizarComOModelo $cabecalhoGitHub $MODELO $copia.full_name $ramoDoModelo $ramoDaCopia | Out-Null
+
+if (-not $jaEraORadar) {
+  Titulo "Trocando o codigo do painel"
+  TentarApi 'DELETE' "https://api.vercel.com/v9/projects/$($projeto.id)/link" $cabecalhoVercel $null | Out-Null
+  ChamarApi 'POST' "https://api.vercel.com/v10/projects/$($projeto.id)/link" $cabecalhoVercel @{
+    type = 'github'; repo = $copia.full_name
+  } | Out-Null
+  Passo "trocado"
+}
 
 Titulo "Publicando"
 $publicacao = ChamarApi 'POST' 'https://api.vercel.com/v13/deployments' $cabecalhoVercel @{
