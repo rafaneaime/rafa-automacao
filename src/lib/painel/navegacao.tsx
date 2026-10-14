@@ -41,3 +41,18 @@ export const CONVITE_DE_UPGRADE: ConviteDeUpgrade | null = {
   href: 'https://adeusmensalidade.com.br/radar-de-compradores?utm_source=meuchat&utm_medium=painel&utm_campaign=upgrade',
   label: 'Upgrade',
 };
+
+/**
+ * Para onde a faixa de "atualização disponível" manda a pessoa.
+ *
+ * O MEUCHAT atualiza pelo Sync fork, que e outro caminho do da Plataforma.
+ */
+export const COMO_ATUALIZAR = 'https://adeus-guia.vercel.app/atualizar-meuchat';
+
+/**
+ * Onde a instalação pergunta qual é a versão mais nova.
+ *
+ * O repositorio publico da base e de onde a propria instalacao foi copiada.
+ */
+export const ONDE_CONFERIR_VERSAO =
+  'https://raw.githubusercontent.com/rafaneaime/rafa-automacao/main/versao.json';
