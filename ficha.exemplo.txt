@@ -32,13 +32,44 @@ PANEL_PASSWORD:
 
 # --- O banco ---
 # Uma das duas. Com a connection string eu uso ela; sem ela, crio o banco no
-# Neon com a chave da API. A chave abre a conta Neon inteira: revogue no fim.
+# Neon com a chave da API.
+#
+# A chave sai em console.neon.tech > foto no canto > Account settings >
+# API keys > Create new API key. Ela abre a conta Neon inteira: revogue no fim.
 DATABASE_URL:
 NEON_API_KEY:
 # So quando a conta Neon tem mais de uma organizacao. Escreva o nome exato.
 NEON_ORG:
 
 # --- As chaves temporarias ---
-# Da conta de quem esta instalando. Revogue as duas quando terminar.
+#
+# As TRES contas (GitHub, Vercel e Neon) sao de quem esta instalando, nao
+# minhas: o codigo, o painel e o banco ficam na conta dela. E a parte que nao
+# da para automatizar, e e a mais lenta. Criar as tres leva uns dez minutos,
+# e depois disso o resto e este arquivo.
+#
+# Ordem que funciona, porque a Vercel pede o GitHub no meio do caminho:
+#
+#  1. github.com/signup
+#  2. vercel.com/signup -> entrar COM a conta do GitHub (botao "Continue with
+#     GitHub"), e autorizar quando ele perguntar
+#  3. neon.tech -> Sign up (so se for eu criando o banco)
+#
+# Depois, as duas chaves:
+#
+# GitHub: github.com/settings/tokens/new  (tela "New personal access token
+#   (classic)"; se a sua mostrar "Repository access", volte e escolha
+#   Tokens (classic))
+#     Note: instalar-painel | Expiration: 7 dias
+#     Select scopes: marque so a caixa `repo`, a primeira. As cinco de baixo
+#     ficam marcadas junto, e e esperado.
+#   Copie o valor que comeca com ghp_. Ele aparece uma vez so.
+#
+# Vercel: vercel.com/account/settings/tokens
+#     Token Name: instalar-painel | Expiration: 7 dias
+#     Scope: a conta pessoal dela, o nome dela na lista, nao um time
+#   Clique em Create e copie. Tambem aparece uma vez so.
+#
+# Revogue as tres quando a instalacao terminar.
 GITHUB_TOKEN:
 VERCEL_TOKEN:

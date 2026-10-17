@@ -130,6 +130,33 @@ dados continuam no projeto antigo. Volte nele e refaça a atualização a partir
 dele. **Nunca clique em "Deploy with Vercel" para atualizar**: esse botão cria
 um banco novo e vazio.
 
+## "Como eu tenho o Radar?" (quem está no MEUCHAT)
+
+As telas com cadeado no menu são do Radar. O que elas acrescentam, em uma
+frase cada:
+
+- **Radar de oportunidades** — quem está mais perto de comprar, hoje.
+- **Funis de vendas** — a jornada inteira, do comentário à compra, com quantas
+  pessoas pararam em cada etapa.
+- **Temperatura dos leads** — um número de interesse por pessoa, que sobe com
+  o que ela faz.
+- **Ficha e histórico** — tudo que uma pessoa fez, numa tela só, antes de você
+  falar com ela.
+- **Vendas e produtos** — a compra ligada à pessoa que veio da sua DM.
+- **Campanhas de WhatsApp** — falar com quem já demonstrou interesse.
+- **Sites e integrações** — visita e clique no seu site entrando na ficha.
+
+**A atualização é acompanhada**, não é um botão que ela aperta sozinha: parte
+dela acontece numa conta que só o suporte tem acesso. O caminho é falar com o
+suporte do Adeus Mensalidade e pedir.
+
+**O que não muda na atualização:** os contatos, as automações, os disparos, a
+senha e o endereço do painel continuam exatamente os mesmos. Só o código muda,
+e o banco é o mesmo de antes.
+
+Não prometa preço, prazo nem data. Se perguntarem, diga que isso é com o
+suporte.
+
 ## Atualizar a instalação
 
 Quando o painel mostrar a faixa **"Atualização disponível"**, o caminho depende
