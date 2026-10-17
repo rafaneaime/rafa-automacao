@@ -60,7 +60,13 @@ NEON_ORG:
 #     GitHub"), e autorizar quando ele perguntar
 #  3. neon.tech -> NAO precisa mais: o banco nasce pela Vercel
 #
-# Depois, as duas chaves:
+# Depois, a chave da Vercel.
+#
+# O GITHUB_TOKEN voce pode DEIXAR EM BRANCO: o instalador mostra um codigo de
+# oito caracteres, voce abre github.com/login/device no navegador logado na
+# conta dela, digita e clica em Authorize. Ninguem cria token nenhum.
+#
+# So preencha o GITHUB_TOKEN se preferir o caminho antigo, que continua valendo:
 #
 # GitHub: github.com/settings/tokens/new  (tela "New personal access token
 #   (classic)"; se a sua mostrar "Repository access", volte e escolha
@@ -75,6 +81,9 @@ NEON_ORG:
 #     Scope: a conta pessoal dela, o nome dela na lista, nao um time
 #   Clique em Create e copie. Tambem aparece uma vez so.
 #
-# Revogue as tres quando a instalacao terminar.
+# Revogue o que tiver criado quando a instalacao terminar.
 GITHUB_TOKEN:
 VERCEL_TOKEN:
+
+# So para teste: usa outro aplicativo no codigo de autorizacao do GitHub.
+GITHUB_CLIENT_ID:

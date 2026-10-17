@@ -113,6 +113,74 @@ function Segredo {
 }
 
 <#
+  O acesso ao GitHub por codigo, sem ninguem criar token.
+
+  A tela de token do GitHub e a parte mais confusa da instalacao: tem duas
+  abas parecidas e uma delas e a errada, a permissao certa esta no meio de uma
+  lista de vinte, e no fim sobra um segredo da conta dela escrito num arquivo
+  nosso.
+
+  Por codigo e assim: o instalador pede um codigo curto ao GitHub, mostra na
+  tela, e quem instala abre `github.com/login/device`, digita e clica em
+  Authorize. O instalador fica perguntando ao GitHub se ja foi autorizado, e
+  quando for, recebe o acesso direto — que existe so durante esta execucao.
+
+  **O identificador do aplicativo nao e segredo.** Neste fluxo o GitHub nao usa
+  senha de aplicativo: a autorizacao e a pessoa digitando o codigo na tela
+  dele. Por isso ele pode viver aqui, no arquivo publico.
+
+  Devolve `$null` em vez de parar quando algo der errado: o caminho antigo,
+  colar o token, continua inteiro logo abaixo. Isto e melhoria, nao obrigacao.
+#>
+function AutorizarPeloCodigo($aplicativo) {
+  $cabecalho = @{ Accept = 'application/json'; 'User-Agent' = 'instalador-meuchat' }
+
+  $pedido = TentarApi 'POST' "https://github.com/login/device/code?client_id=$aplicativo&scope=repo" $cabecalho $null
+  if (-not $pedido -or -not $pedido.device_code) { return $null }
+
+  Write-Host ""
+  Write-Host "   Abra esta pagina:   $($pedido.verification_uri)"
+  Write-Host "   E digite o codigo:  $($pedido.user_code)"
+  Write-Host ""
+  Write-Host "   (no navegador logado na conta de quem esta instalando)"
+  Write-Host "   Esperando a autorizacao..."
+
+  # O GitHub manda de quanto em quanto tempo perguntar. Perguntar mais rapido
+  # que isso faz ele responder `slow_down` e aumentar o intervalo.
+  $intervalo = if ($pedido.interval) { [int]$pedido.interval } else { 5 }
+  # O `if` como argumento de metodo nao passa no PowerShell: sai primeiro.
+  $segundos = if ($pedido.expires_in) { [int]$pedido.expires_in } else { 900 }
+  $limite = (Get-Date).AddSeconds($segundos)
+
+  while ((Get-Date) -lt $limite) {
+    Start-Sleep -Seconds $intervalo
+
+    $resposta = TentarApi 'POST' ("https://github.com/login/oauth/access_token" +
+      "?client_id=$aplicativo&device_code=$($pedido.device_code)" +
+      "&grant_type=urn:ietf:params:oauth:grant-type:device_code") $cabecalho $null
+
+    if (-not $resposta) { continue }
+    if ($resposta.access_token) {
+      Passo "autorizado"
+      return $resposta.access_token
+    }
+
+    # Enquanto ninguem digitou o codigo, o GitHub responde 200 com `error`.
+    # So dois desses sao motivo para desistir.
+    switch ($resposta.error) {
+      'authorization_pending' { }
+      'slow_down'             { $intervalo = $intervalo + 5 }
+      'expired_token'         { Passo "o codigo venceu antes de ser usado."; return $null }
+      'access_denied'         { Passo "a autorizacao foi recusada na tela do GitHub."; return $null }
+      default                 { return $null }
+    }
+  }
+
+  Passo "ninguem autorizou a tempo."
+  return $null
+}
+
+<#
   O banco, nascido dentro da conta Vercel dela.
 
   Este e o caminho curto, e e o que o botao de deploy sempre fez por tras: a
@@ -320,6 +388,18 @@ function ChamarApi($metodo, $url, $cabecalhos, $corpo) {
 #>
 $CLI_DA_VERCEL = 'vercel@60.0.1'
 
+<#
+  O aplicativo do GitHub que pede a autorizacao por codigo.
+
+  Em branco, o instalador pede o token colado, como sempre fez. Preenchido,
+  ele mostra um codigo de oito caracteres e ninguem cria token nenhum.
+
+  Para criar, uma vez so: github.com/settings/applications/new, qualquer nome
+  e endereco, e depois marcar **Enable Device Flow** nas configuracoes do
+  aplicativo. O identificador que aparece la vai aqui dentro.
+#>
+$APP_DO_GITHUB = ''
+
 Write-Host ""
 Write-Host "Instalador do MEUCHAT"
 Write-Host "Publica o sistema na SUA conta. Nada fica na conta de outra pessoa."
@@ -371,10 +451,25 @@ Passo "produto: $produto"
 Passo "nome:    $nomeRepo"
 Passo "modelo:  $modelo"
 
-Titulo "As duas chaves temporarias"
-Passo "Elas autorizam este instalador a criar o repositorio e publicar."
-Passo "Ao terminar, voce revoga as duas. O texto colado nao aparece na tela."
-$tokenGitHub = Campo 'GITHUB_TOKEN' "Token do GitHub" $true
+Titulo "O acesso ao GitHub"
+$tokenGitHub = $null
+# A ficha manda: quem escreveu um token ali quer aquele token.
+if ($FICHA.ContainsKey('GITHUB_TOKEN')) {
+  $tokenGitHub = $FICHA['GITHUB_TOKEN']
+} else {
+  $aplicativo = CampoOpcional 'GITHUB_CLIENT_ID'
+  if (-not $aplicativo) { $aplicativo = $APP_DO_GITHUB }
+  if ($aplicativo) { $tokenGitHub = AutorizarPeloCodigo $aplicativo }
+}
+if (-not $tokenGitHub) {
+  Passo "Vou pelo token colado. Ele autoriza criar o repositorio e publicar,"
+  Passo "e pode ser revogado assim que a instalacao terminar."
+  $tokenGitHub = Campo 'GITHUB_TOKEN' "Token do GitHub" $true
+}
+
+Titulo "A chave da Vercel"
+Passo "Ela autoriza criar o projeto, o banco e publicar."
+Passo "Ao terminar, voce revoga. O texto colado nao aparece na tela."
 $tokenVercel = Campo 'VERCEL_TOKEN' "Token da Vercel" $true
 
 $cabecalhoGitHub = @{
