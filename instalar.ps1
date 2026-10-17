@@ -113,7 +113,73 @@ function Segredo {
 }
 
 <#
+  O banco, nascido dentro da conta Vercel dela.
+
+  Este e o caminho curto, e e o que o botao de deploy sempre fez por tras: a
+  Vercel tem o Neon no marketplace dela, e um comando so instala a integracao,
+  cria o banco, liga no projeto e grava a `DATABASE_URL` nas variaveis. Quem
+  instala nao abre o Neon, nao cria conta la, nao procura connection string e
+  nao gera chave de API nenhuma.
+
+  Exige a CLI da Vercel, que vem por `npx`: ou seja, exige Node na maquina de
+  quem esta instalando. Quem nao tiver cai no caminho antigo, que continua
+  inteiro logo abaixo.
+
+  `--cwd` aponta para uma pasta vazia e temporaria: a CLI quer uma pasta ligada
+  a um projeto, e nao ha clone local nenhum aqui. O `link` faz essa ligacao sem
+  baixar o repositorio.
+
+  **A primeira instalacao numa conta nova pode parar nos termos do
+  marketplace.** A Vercel exige confirmacao humana, em terminal interativo,
+  antes de instalar uma integracao pela primeira vez naquela conta. Quando isso
+  acontece o comando falha dizendo isso, e a saida e rodar
+  `vercel integration accept-terms neon` uma vez — por conta, nao por projeto.
+#>
+function BancoPelaVercel($nomeProjeto, $token) {
+  Titulo "O banco de dados"
+  Passo 'Criando pela propria Vercel: a DATABASE_URL entra sozinha.'
+
+  $npx = (Get-Command npx -ErrorAction SilentlyContinue)
+  if (-not $npx) {
+    Passo 'nao achei o npx (Node) nesta maquina; vou pelo caminho antigo.'
+    return $false
+  }
+
+  $pasta = Join-Path ([IO.Path]::GetTempPath()) ("instalar-" + [Guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $pasta -Force | Out-Null
+
+  try {
+    # A saida das duas chamadas vai para a tela: elas demoram, e tela parada
+    # faz quem esta instalando achar que travou.
+    & npx --yes vercel@latest link --yes --project $nomeProjeto --token $token --cwd $pasta
+    if ($LASTEXITCODE -ne 0) {
+      Passo "nao consegui ligar a pasta ao projeto; vou pelo caminho antigo."
+      return $false
+    }
+
+    & npx --yes vercel@latest integration add neon --non-interactive --token $token --cwd $pasta
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host ""
+      Write-Host "   A Vercel nao criou o banco. O motivo mais comum, numa conta nova,"
+      Write-Host "   sao os termos do marketplace, que precisam ser aceitos uma vez:"
+      Write-Host ""
+      Write-Host "     npx vercel integration accept-terms neon --token SEU_TOKEN"
+      Write-Host ""
+      Write-Host "   Aceite e rode o instalador de novo, ou siga pelo caminho antigo."
+      return $false
+    }
+
+    Passo "banco criado e ligado ao projeto"
+    return $true
+  } finally {
+    Remove-Item -Recurse -Force $pasta -ErrorAction SilentlyContinue
+  }
+}
+
+<#
   O banco, criado aqui dentro.
+
+  O caminho antigo, para quem nao tem Node na maquina ou ja tem um banco.
 
   Achar a connection string no Neon e o passo que mais atrasa a sessao: ela
   aparece uma vez na tela de boas-vindas e depois some atras de um botao que
@@ -360,7 +426,34 @@ if ($gravadas.Count -gt 0) { Passo "$($gravadas.Count) valor(es) ja estavam grav
 function JaTem($chave) { return $gravadas.ContainsKey($chave) }
 
 $novos = @{}
-if (-not (JaTem 'DATABASE_URL'))   { $novos['DATABASE_URL']   = CriarOuPedirBanco $nomeProjeto }
+
+<#
+  O banco: primeiro pela Vercel, e so depois pelo caminho antigo.
+
+  Quando a Vercel cria, ela mesma grava a `DATABASE_URL` nas variaveis do
+  projeto — por isso nao entra em `$novos`, e por isso a leitura das variaveis
+  e refeita logo abaixo: sem isso o instalador nao saberia que o banco ja
+  esta la, e tentaria pedir de novo.
+
+  Com `DATABASE_URL` na ficha, nada disso acontece: quem colou um banco quer
+  aquele banco.
+#>
+if (-not (JaTem 'DATABASE_URL')) {
+  $bancoDaFicha = CampoOpcional 'DATABASE_URL'
+  if ($bancoDaFicha) {
+    $novos['DATABASE_URL'] = CriarOuPedirBanco $nomeProjeto
+  } elseif (BancoPelaVercel $nomeProjeto $tokenVercel) {
+    $atuais = TentarApi 'GET' "https://api.vercel.com/v9/projects/$($projeto.id)/env?decrypt=true" $cabecalhoVercel $null
+    foreach ($e in @($atuais.envs)) {
+      if ($e.target -contains 'production' -and $e.key) { $gravadas[$e.key] = $e.value }
+    }
+    if (-not (JaTem 'DATABASE_URL')) {
+      Erro "a Vercel disse que criou o banco, mas a DATABASE_URL nao apareceu nas variaveis do projeto. Abra o projeto na Vercel e confira em Storage."
+    }
+  } else {
+    $novos['DATABASE_URL'] = CriarOuPedirBanco $nomeProjeto
+  }
+}
 if (-not (JaTem 'IG_APP_ID'))      { $novos['IG_APP_ID']      = Campo 'IG_APP_ID' "IG_APP_ID (numero do app do Instagram)" $false }
 if (-not (JaTem 'IG_APP_SECRET'))  { $novos['IG_APP_SECRET']  = Campo 'IG_APP_SECRET' "IG_APP_SECRET" $true }
 if (-not (JaTem 'ACCESS_TOKEN'))   { $novos['ACCESS_TOKEN']   = Campo 'ACCESS_TOKEN' "ACCESS_TOKEN (o token gerado no portal)" $true }

@@ -31,11 +31,16 @@ EMAIL_CONTATO:
 PANEL_PASSWORD:
 
 # --- O banco ---
-# Uma das duas. Com a connection string eu uso ela; sem ela, crio o banco no
-# Neon com a chave da API.
 #
-# A chave sai em console.neon.tech > foto no canto > Account settings >
-# API keys > Create new API key. Ela abre a conta Neon inteira: revogue no fim.
+# DEIXE OS TRES EM BRANCO: o banco nasce pela propria Vercel, no plano
+# gratuito, e a DATABASE_URL entra sozinha nas variaveis do projeto. Sem conta
+# no Neon, sem procurar connection string, sem chave de API.
+#
+# Na primeira instalacao de cada conta a Vercel pode pedir aceite dos termos do
+# marketplace. Quando isso acontece o instalador avisa e mostra o comando.
+#
+# Preencha abaixo so se ela JA tiver um banco e quiser usar aquele, ou se esta
+# maquina nao tiver Node (o caminho pela Vercel usa o npx).
 DATABASE_URL:
 NEON_API_KEY:
 # So quando a conta Neon tem mais de uma organizacao. Escreva o nome exato.
@@ -53,7 +58,7 @@ NEON_ORG:
 #  1. github.com/signup
 #  2. vercel.com/signup -> entrar COM a conta do GitHub (botao "Continue with
 #     GitHub"), e autorizar quando ele perguntar
-#  3. neon.tech -> Sign up (so se for eu criando o banco)
+#  3. neon.tech -> NAO precisa mais: o banco nasce pela Vercel
 #
 # Depois, as duas chaves:
 #
