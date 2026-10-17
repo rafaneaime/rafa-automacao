@@ -148,22 +148,30 @@ function BancoPelaVercel($nomeProjeto, $token) {
   $pasta = Join-Path ([IO.Path]::GetTempPath()) ("instalar-" + [Guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Path $pasta -Force | Out-Null
 
+  # O token NAO vai na linha de comando: no Windows qualquer processo da
+  # maquina consegue ler a linha de comando dos outros, e isso e a conta
+  # Vercel inteira de quem esta instalando, exposta pelo tempo da chamada. A
+  # CLI le `VERCEL_TOKEN` do ambiente, que fica dentro deste processo.
+  $tokenDeAntes = $env:VERCEL_TOKEN
+  $env:VERCEL_TOKEN = $token
+
   try {
     # A saida das duas chamadas vai para a tela: elas demoram, e tela parada
     # faz quem esta instalando achar que travou.
-    & npx --yes vercel@latest link --yes --project $nomeProjeto --token $token --cwd $pasta
+    & npx --yes $CLI_DA_VERCEL link --yes --project $nomeProjeto --cwd $pasta
     if ($LASTEXITCODE -ne 0) {
       Passo "nao consegui ligar a pasta ao projeto; vou pelo caminho antigo."
       return $false
     }
 
-    & npx --yes vercel@latest integration add neon --non-interactive --token $token --cwd $pasta
+    & npx --yes $CLI_DA_VERCEL integration add neon --non-interactive --cwd $pasta
     if ($LASTEXITCODE -ne 0) {
       Write-Host ""
       Write-Host "   A Vercel nao criou o banco. O motivo mais comum, numa conta nova,"
       Write-Host "   sao os termos do marketplace, que precisam ser aceitos uma vez:"
       Write-Host ""
-      Write-Host "     npx vercel integration accept-terms neon --token SEU_TOKEN"
+      Write-Host "     npx vercel integration accept-terms neon"
+      Write-Host "   (com VERCEL_TOKEN no ambiente, ou ja logado na conta dela)"
       Write-Host ""
       Write-Host "   Aceite e rode o instalador de novo, ou siga pelo caminho antigo."
       return $false
@@ -172,6 +180,13 @@ function BancoPelaVercel($nomeProjeto, $token) {
     Passo "banco criado e ligado ao projeto"
     return $true
   } finally {
+    # Devolve o que estava la: quem instala pode ter o proprio token no
+    # ambiente, e sair levando ele embora quebraria o resto da sessao dela.
+    if ($null -eq $tokenDeAntes) {
+      Remove-Item Env:\VERCEL_TOKEN -ErrorAction SilentlyContinue
+    } else {
+      $env:VERCEL_TOKEN = $tokenDeAntes
+    }
     Remove-Item -Recurse -Force $pasta -ErrorAction SilentlyContinue
   }
 }
@@ -292,6 +307,19 @@ function ChamarApi($metodo, $url, $cabecalhos, $corpo) {
   }
 }
 
+<#
+  A CLI da Vercel, numa versao fixa.
+
+  `vercel@latest` baixaria, a cada instalacao, o que estivesse publicado no
+  npm naquele minuto — e logo em seguida esse codigo recebe o acesso a conta
+  Vercel de quem esta instalando. Versao fixa e versao que alguem olhou.
+
+  Para subir: rode a versao nova aqui, confira `integration add neon`, e
+  troque este numero. Se a Vercel mudar o comando e esta versao parar de
+  funcionar, o erro aparece na tela do instalador, que e onde da para reagir.
+#>
+$CLI_DA_VERCEL = 'vercel@60.0.1'
+
 Write-Host ""
 Write-Host "Instalador do MEUCHAT"
 Write-Host "Publica o sistema na SUA conta. Nada fica na conta de outra pessoa."
@@ -320,6 +348,24 @@ $ehRadar = $produto -eq 'radar'
 $modelo = if ($ehRadar) { 'adeus-mensalidade/plataforma' } else { 'rafaneaime/rafa-automacao' }
 $nomeRepo = CampoOpcional 'nome'
 if (-not $nomeRepo) { $nomeRepo = if ($ehRadar) { 'plataforma' } else { 'meu-chat' } }
+
+<#
+  O nome vira endereco, nome de repositorio e argumento de linha de comando.
+
+  A conferencia e estreita de proposito. O endereco do painel sai dele
+  (`nome.vercel.app`), entao maiuscula, espaco e acento ja nao servem — e,
+  como ele tambem entra numa chamada ao `npx`, que no Windows passa pelo
+  `cmd.exe`, caractere como `&` ou `|` ali dentro deixaria de ser nome para
+  virar comando. Recusar cedo, com a regra escrita, e melhor que descobrir
+  isso no meio da instalacao de outra pessoa.
+#>
+# `-cnotmatch`, e nao `-notmatch`: no PowerShell a comparacao com expressao
+# regular ignora maiuscula por padrao, e 'Painel' passava — virando um
+# endereco que nao e o nome que o instalador procura depois.
+if ($nomeRepo -cnotmatch '^[a-z0-9][a-z0-9-]{0,62}$') {
+  Erro "o nome '$nomeRepo' nao serve. Use so letras minusculas, numeros e hifen, comecando por letra ou numero (exemplo: maria-automacao)."
+}
+
 $nomeProjeto = $nomeRepo
 Passo "produto: $produto"
 Passo "nome:    $nomeRepo"
