@@ -391,14 +391,20 @@ $CLI_DA_VERCEL = 'vercel@60.0.1'
 <#
   O aplicativo do GitHub que pede a autorizacao por codigo.
 
-  Em branco, o instalador pede o token colado, como sempre fez. Preenchido,
-  ele mostra um codigo de oito caracteres e ninguem cria token nenhum.
+  Com ele preenchido, o instalador mostra um codigo de oito caracteres e
+  ninguem cria token nenhum. Em branco, ele volta a pedir o token colado.
 
-  Para criar, uma vez so: github.com/settings/applications/new, qualquer nome
-  e endereco, e depois marcar **Enable Device Flow** nas configuracoes do
-  aplicativo. O identificador que aparece la vai aqui dentro.
+  Nao e segredo: neste fluxo o GitHub nao usa senha de aplicativo, e quem
+  autoriza e a pessoa digitando o codigo na tela dele.
+
+  Provado em 18/10/2026 contra o GitHub de verdade: o acesso volta com
+  prefixo `gho_`, escopo `repo` declarado, e le repositorio privado. Vale 8
+  horas, muito mais do que uma instalacao leva.
+
+  Trocar de aplicativo, se um dia precisar: github.com/settings/developers,
+  aba OAuth Apps, com **Enable Device Flow** marcado na tela do aplicativo.
 #>
-$APP_DO_GITHUB = ''
+$APP_DO_GITHUB = 'Ov23liZP0LjG83tBz5VL'
 
 Write-Host ""
 Write-Host "Instalador do MEUCHAT"
