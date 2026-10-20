@@ -1,10 +1,14 @@
 # Ficha de instalacao — Adeus Mensalidade
 #
-# Preencha uma por pessoa, salve com outro nome e rode:
+# Preencha uma por pessoa, salve com outro nome na pasta Downloads\fichas
+# (ou no proprio Downloads) e rode esta linha, sem mudar nada nela:
 #
-#   $env:FICHA="C:\caminho\ficha-da-maria.txt"; irm https://raw.githubusercontent.com/rafaneaime/rafa-automacao/main/instalar.ps1 | iex
+#   irm https://raw.githubusercontent.com/rafaneaime/rafa-automacao/main/instalar.ps1 | iex
 #
-# O instalador nao pergunta nada do que estiver aqui. O que ficar em branco
+# O instalador procura a ficha sozinho. Com uma so, usa aquela e diz qual foi;
+# com varias, mostra a lista e pergunta o numero.
+#
+# Ele nao pergunta nada do que estiver preenchido aqui. O que ficar em branco
 # ele pede na tela, como antes.
 #
 # Linha que comeca com # e comentario. O valor e tudo que vem depois do

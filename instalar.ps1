@@ -69,8 +69,74 @@ function LerFicha($caminho) {
   return $ficha
 }
 
-$FICHA = LerFicha $env:FICHA
-$COM_FICHA = $null -ne $env:FICHA -and $env:FICHA -ne ''
+<#
+  Achar a ficha sem ninguem digitar caminho.
+
+  O caminho colado a mao era o passo que mais errava: barra invertida,
+  acento no nome do arquivo, aspas que o navegador troca por aspas curvas.
+  Agora o instalador procura sozinho, e o comando volta a ser uma linha so.
+
+  Onde procura, nesta ordem: a pasta `fichas` dentro de Downloads, e depois o
+  proprio Downloads. Arquivo e ficha quando tem `produto:` ou `IG_APP_ID:`
+  dentro — e nao pelo nome, que cada um escreve de um jeito.
+
+  Com uma ficha so, usa aquela e diz qual foi. Com varias, mostra a lista e
+  pergunta o numero: adivinhar qual e a da pessoa certa seria instalar com os
+  dados de outra.
+#>
+function AcharFichas {
+  $pastas = @(
+    (Join-Path $env:USERPROFILE 'Downloads\fichas'),
+    (Join-Path $env:USERPROFILE 'Downloads')
+  )
+
+  foreach ($pasta in $pastas) {
+    if (-not (Test-Path $pasta)) { continue }
+
+    $achadas = @()
+    foreach ($arquivo in (Get-ChildItem -Path $pasta -Filter '*.txt' -File -ErrorAction SilentlyContinue)) {
+      try {
+        $conteudo = Get-Content -Path $arquivo.FullName -Raw -Encoding UTF8 -ErrorAction Stop
+      } catch { continue }
+      if ($conteudo -match '(?m)^\s*(produto|IG_APP_ID)\s*:') { $achadas += $arquivo }
+    }
+
+    if ($achadas.Count -gt 0) {
+      return ,@($achadas | Sort-Object LastWriteTime -Descending)
+    }
+  }
+
+  return ,@()
+}
+
+function EscolherFicha {
+  if ($env:FICHA) { return $env:FICHA }
+
+  $achadas = AcharFichas
+  if ($achadas.Count -eq 0) { return $null }
+
+  if ($achadas.Count -eq 1) {
+    Titulo "A ficha"
+    Passo "usando: $($achadas[0].Name)"
+    return $achadas[0].FullName
+  }
+
+  Titulo "Qual ficha"
+  for ($i = 0; $i -lt $achadas.Count; $i++) {
+    $quando = $achadas[$i].LastWriteTime.ToString('dd/MM HH:mm')
+    Passo "$($i + 1). $($achadas[$i].Name)   (salva em $quando)"
+  }
+  $escolha = Pergunta "Digite o numero da ficha"
+  $indice = 0
+  if (-not [int]::TryParse($escolha, [ref]$indice) -or $indice -lt 1 -or $indice -gt $achadas.Count) {
+    Erro "responda com um dos numeros da lista."
+  }
+  return $achadas[$indice - 1].FullName
+}
+
+$CAMINHO_DA_FICHA = EscolherFicha
+$FICHA = LerFicha $CAMINHO_DA_FICHA
+$COM_FICHA = $null -ne $CAMINHO_DA_FICHA -and $CAMINHO_DA_FICHA -ne ''
 
 <#
   Um valor: da ficha, ou perguntado.
@@ -80,7 +146,7 @@ $COM_FICHA = $null -ne $env:FICHA -and $env:FICHA -ne ''
 #>
 function Campo($chave, $rotulo, $secreto) {
   if ($FICHA.ContainsKey($chave)) { return $FICHA[$chave] }
-  if ($COM_FICHA) { Erro "falta '$chave' na ficha ($env:FICHA)." }
+  if ($COM_FICHA) { Erro "falta '$chave' na ficha ($CAMINHO_DA_FICHA)." }
   if ($secreto) { return PerguntaSecreta $rotulo }
   return Pergunta $rotulo
 }
@@ -713,7 +779,7 @@ $linhas += "Depois disso, comente na publicacao com outra conta para testar."
 foreach ($linha in $linhas) { Write-Host "   $linha" }
 
 if ($COM_FICHA) {
-  $resumo = Join-Path (Split-Path -Parent $env:FICHA) "$nomeProjeto-instalacao.txt"
+  $resumo = Join-Path (Split-Path -Parent $CAMINHO_DA_FICHA) "$nomeProjeto-instalacao.txt"
   try {
     Set-Content -Path $resumo -Value $linhas -Encoding UTF8
     Write-Host ""
