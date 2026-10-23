@@ -82,7 +82,10 @@ NEON_ORG:
 #
 # Vercel: vercel.com/account/settings/tokens
 #     Token Name: instalar-painel | Expiration: 7 dias
-#     Scope: a conta pessoal dela, o nome dela na lista, nao um time
+#     Scope: a conta pessoal dela (o nome dela, nao um time) e, quando a
+#       lista mostrar os projetos dela, escolha ALL PROJECTS. O
+#       instalador cria um projeto novo, e token preso a um projeto que
+#       ja existe nao consegue criar outro.
 #   Clique em Create e copie. Tambem aparece uma vez so.
 #
 # Revogue o que tiver criado quando a instalacao terminar.
