@@ -34,6 +34,17 @@ function Pergunta($rotulo) {
   return $texto.Trim()
 }
 
+# A mesma pergunta escondida, mas branco é resposta: quem aperta Enter está
+# escolhendo o outro caminho, não errando. Só existe por causa do GitHub, onde
+# "não tenho token" é a resposta certa na maioria das instalações.
+function SegredoOpcional($rotulo) {
+  $segura = Read-Host -Prompt "   $rotulo" -AsSecureString
+  $texto = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura))
+  if ([string]::IsNullOrWhiteSpace($texto)) { return '' }
+  return $texto.Trim()
+}
+
 <#
   A ficha: os dados da instalação preenchidos antes, num arquivo.
 
@@ -201,8 +212,29 @@ function Segredo {
 function AutorizarPeloCodigo($aplicativo) {
   $cabecalho = @{ Accept = 'application/json'; 'User-Agent' = 'instalador-meuchat' }
 
-  $pedido = TentarApi 'POST' "https://github.com/login/device/code?client_id=$aplicativo&scope=repo" $cabecalho $null
-  if (-not $pedido -or -not $pedido.device_code) { return $null }
+  <#
+    O pedido do codigo nao passa pelo `TentarApi` porque ele engole o motivo.
+    23/10/2026: numa instalacao o codigo nunca apareceu — a tela pulou direto
+    para "Vou pelo token colado" e morreu dizendo que faltava GITHUB_TOKEN na
+    ficha. Sem a resposta do GitHub na tela nao da para saber se foi rede,
+    limite de pedidos ou o aplicativo. O que o GitHub responder aparece.
+  #>
+  $pedido = $null
+  $recusa = $null
+  try {
+    $pedido = Invoke-RestMethod -Method POST -ErrorAction Stop -Headers $cabecalho `
+      -Uri "https://github.com/login/device/code?client_id=$aplicativo&scope=repo"
+  } catch {
+    $recusa = $_.ErrorDetails.Message
+    if (-not $recusa) { $recusa = $_.Exception.Message }
+  }
+
+  if (-not $pedido -or -not $pedido.device_code) {
+    if (-not $recusa -and $pedido) { $recusa = (ConvertTo-Json -InputObject $pedido -Compress) }
+    Passo "o GitHub nao devolveu o codigo de autorizacao."
+    if ($recusa) { Passo "resposta: $recusa" }
+    return $null
+  }
 
   Write-Host ""
   Write-Host "   Abra esta pagina:   $($pedido.verification_uri)"
@@ -525,18 +557,43 @@ Passo "modelo:  $modelo"
 
 Titulo "O acesso ao GitHub"
 $tokenGitHub = $null
+# Fora do `if`: a segunda tentativa, la embaixo, precisa do mesmo aplicativo.
+$aplicativo = CampoOpcional 'GITHUB_CLIENT_ID'
+if (-not $aplicativo) { $aplicativo = $APP_DO_GITHUB }
+
 # A ficha manda: quem escreveu um token ali quer aquele token.
 if ($FICHA.ContainsKey('GITHUB_TOKEN')) {
   $tokenGitHub = $FICHA['GITHUB_TOKEN']
-} else {
-  $aplicativo = CampoOpcional 'GITHUB_CLIENT_ID'
-  if (-not $aplicativo) { $aplicativo = $APP_DO_GITHUB }
-  if ($aplicativo) { $tokenGitHub = AutorizarPeloCodigo $aplicativo }
+} elseif ($aplicativo) {
+  $tokenGitHub = AutorizarPeloCodigo $aplicativo
+}
+<#
+  Quando a autorizacao pelo codigo nao sai.
+
+  Antes isto caia num `Campo 'GITHUB_TOKEN'`, e com ficha na mesa `Campo` nao
+  pergunta: ele para a instalacao dizendo que falta um campo que a propria
+  ficha manda deixar em branco. Aconteceu em 23/10/2026, no meio de uma
+  instalacao, e o texto culpava a pessoa por seguir a instrucao certa.
+
+  Agora a saida e perguntar. Enter tenta o codigo de novo — porque falha de
+  rede e o motivo mais provavel, e tentar de novo costuma bastar — e quem
+  preferir cola um token. Tres tentativas, para a tela nao virar um lugar onde
+  se aperta Enter para sempre.
+#>
+if (-not $tokenGitHub) {
+  Write-Host ""
+  Passo "A autorizacao pelo codigo nao saiu. Duas saidas, nesta ordem:"
+  Passo "  1. Enter aqui, sem digitar nada: eu peco outro codigo"
+  Passo "  2. colar um token do GitHub: github.com/settings/tokens/new,"
+  Passo "     'Tokens (classic)', marcando so a caixa repo"
+  for ($tentativa = 1; $tentativa -le 3 -and -not $tokenGitHub; $tentativa++) {
+    $colado = SegredoOpcional "Token do GitHub (ou Enter para tentar o codigo de novo)"
+    if ($colado) { $tokenGitHub = $colado; break }
+    if ($aplicativo) { $tokenGitHub = AutorizarPeloCodigo $aplicativo }
+  }
 }
 if (-not $tokenGitHub) {
-  Passo "Vou pelo token colado. Ele autoriza criar o repositorio e publicar,"
-  Passo "e pode ser revogado assim que a instalacao terminar."
-  $tokenGitHub = Campo 'GITHUB_TOKEN' "Token do GitHub" $true
+  Erro "nao consegui o acesso ao GitHub. Nada foi criado — da para rodar de novo quando a conexao estiver boa."
 }
 
 Titulo "A chave da Vercel"
