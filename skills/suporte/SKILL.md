@@ -111,6 +111,39 @@ reconhecido para Hotmart, Kiwify, Payt, Eduzz, Braip, PerfectPay, Ticto,
 Monetizze e Greenn. Mas a **venda** só chega pelo aviso da Hotmart. Nas outras,
 o painel mostra o clique e a visita, não a compra.
 
+### "Vendi na Hotmart e nenhuma venda aparece no painel" (Radar)
+
+O painel só sabe de uma venda quando a Hotmart avisa, e esse aviso é um webhook
+que a pessoa cadastra uma vez. Ele não vem ligado, e não existe tela no painel
+para ligá-lo — é o que mais trava gente. Dois pedaços, e os dois são
+necessários:
+
+**O webhook na Hotmart.** O endereço é o do painel dela com
+`/api/webhooks/hotmart` no fim. Na Hotmart: **Ferramentas → Ver todas →
+Webhook (API e notificações) → + Cadastrar Webhook**, nome a escolha dela, esse
+endereço no campo da URL, e os eventos **Compra aprovada**, **Compra completa**,
+**Compra reembolsada**, **Chargeback**, **Pedido de reembolso** e **Compra
+cancelada**. Os três últimos são o que faz uma devolução desfazer a venda; sem
+eles, quem pediu reembolso conta como comprador para sempre.
+
+**O hottok guardado no projeto.** Ao salvar, a Hotmart mostra um código chamado
+**hottok**. Ele vai na Vercel, em Settings → Environment Variables, numa
+variável nova chamada `HOTMART_HOTTOK`, e só passa a valer depois de um
+**Redeploy** do último deploy. Enquanto ela não existir, o painel **recusa toda
+venda** — de propósito: sem o código, qualquer um que descobrisse o endereço
+inventaria uma compra. Nunca peça o valor do hottok na conversa.
+
+Para saber em qual dos dois está o problema: a aba **Histórico** do webhook, na
+própria Hotmart, mostra a resposta do painel. Erro ali com o webhook cadastrado
+é o `HOTMART_HOTTOK` faltando ou diferente.
+
+Produto não precisa ser cadastrado antes. Ele aparece sozinho em Vendas →
+Produtos depois da primeira venda dele, e ali ela desliga o que não quer no
+painel e informa o preço.
+
+O passo a passo com print de cada tela é
+`adeus-guia.vercel.app/comecar-no-radar`, etapa 5.
+
 ### "Essa pessoa está com 0 pontos / interesse não calculado" (Radar)
 
 O interesse é calculado **uma vez por dia, de madrugada**. Quem interagiu hoje
