@@ -557,6 +557,37 @@ Passo "GitHub: $($usuario.login)"
 $eu = ChamarApi 'GET' 'https://api.vercel.com/v2/user' $cabecalhoVercel $null
 Passo "Vercel: $($eu.user.username)"
 
+<#
+  O modelo do Radar e privado, e o 404 do GitHub nao explica nada.
+
+  Quem pede o Radar sem ter aceitado o convite da organizacao recebia "a
+  chamada para .../generate falhou ... 404" — e procurava erro de digitacao no
+  nome do repositorio, que esta certo. O 404 e como o GitHub responde para
+  repositorio privado que o token nao enxerga.
+
+  Conferir antes custa uma chamada e troca esse beco sem saida por uma
+  instrucao. E acontece ANTES de criar qualquer coisa: parar aqui nao deixa
+  projeto pela metade na conta de ninguem.
+#>
+if ($ehRadar) {
+  Titulo "Conferindo o acesso ao modelo do Radar"
+  if (-not (TentarApi 'GET' "https://api.github.com/repos/$modelo" $cabecalhoGitHub $null)) {
+    Write-Host ""
+    Write-Host "Esta conta do GitHub nao enxerga o modelo do Radar."
+    Write-Host "Quase sempre e o convite da organizacao, que ainda nao foi aceito:"
+    Write-Host ""
+    Write-Host "  1. procure no e-mail o convite do GitHub para adeus-mensalidade"
+    Write-Host "  2. clique em Join @adeus-mensalidade"
+    Write-Host "  3. se nao achar o e-mail, abra github.com/orgs/adeus-mensalidade/invitation"
+    Write-Host "  4. volte aqui e rode de novo"
+    Write-Host ""
+    Write-Host "Se o convite nem chegou, quem envia e o Adeus Mensalidade, em"
+    Write-Host "github.com/orgs/adeus-mensalidade/people."
+    Erro "o convite da organizacao precisa estar aceito antes de instalar o Radar."
+  }
+  Passo "modelo visivel: $modelo"
+}
+
 Titulo "Criando a sua copia do codigo"
 
 <#
