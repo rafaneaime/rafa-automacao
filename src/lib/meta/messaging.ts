@@ -1,4 +1,4 @@
-import { metaPost } from './client';
+import { GRAPH_BASE, metaPost } from './client';
 
 /**
  * Um botão da mensagem.
@@ -36,12 +36,19 @@ export function buildMessagePayload(text: string, buttons: Button[]): unknown {
   };
 }
 
+/*
+ * O `host` fecha a lista de parâmetros de cada envio em vez de ser lido de uma
+ * constante: a mesma instalação pode ter uma conta no login do Instagram e
+ * outra no unificado, e a decisão é da conta, não do arquivo. Quem não informa
+ * continua no endereço antigo, que é onde todo painel já conectado vive.
+ */
 export function publicReply(
   commentId: string,
   message: string,
   token: string,
+  host = GRAPH_BASE,
 ): Promise<unknown> {
-  return metaPost(`/${commentId}/replies`, token, { message });
+  return metaPost(`/${commentId}/replies`, token, { message }, {}, host);
 }
 
 export function privateReply(
@@ -50,11 +57,12 @@ export function privateReply(
   text: string,
   buttons: Button[],
   token: string,
+  host = GRAPH_BASE,
 ): Promise<unknown> {
   return metaPost(`/${accountIgId}/messages`, token, {
     recipient: { comment_id: commentId },
     message: buildMessagePayload(text, buttons),
-  });
+  }, {}, host);
 }
 
 export function sendDm(
@@ -63,9 +71,10 @@ export function sendDm(
   text: string,
   buttons: Button[],
   token: string,
+  host = GRAPH_BASE,
 ): Promise<unknown> {
   return metaPost(`/${accountIgId}/messages`, token, {
     recipient: { id: recipientIgId },
     message: buildMessagePayload(text, buttons),
-  });
+  }, {}, host);
 }

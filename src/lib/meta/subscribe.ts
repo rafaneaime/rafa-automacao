@@ -1,4 +1,4 @@
-import { GRAPH_VERSION, metaGet, metaPost } from './client';
+import { GRAPH_BASE, GRAPH_UNIFICADO, GRAPH_VERSION, metaGet, metaPost } from './client';
 
 /*
  * `live_comments` entrou em 06/10/2026: comentário em transmissão ao vivo chega
@@ -11,10 +11,10 @@ import { GRAPH_VERSION, metaGet, metaPost } from './client';
  */
 export const WEBHOOK_FIELDS = 'messages,messaging_postbacks,comments,messaging_seen,live_comments';
 
-export function subscribeApp(accountIgId: string, token: string): Promise<unknown> {
+export function subscribeApp(accountIgId: string, token: string, host = GRAPH_BASE): Promise<unknown> {
   return metaPost(`/${accountIgId}/subscribed_apps`, token, {}, {
     subscribed_fields: WEBHOOK_FIELDS,
-  });
+  }, host);
 }
 
 /**
@@ -32,11 +32,12 @@ export function subscribeApp(accountIgId: string, token: string): Promise<unknow
 export async function camposInscritos(
   accountIgId: string,
   token: string,
+  host = GRAPH_BASE,
 ): Promise<string[]> {
   const bruto = await metaGet(`/${GRAPH_VERSION}/${accountIgId}/subscribed_apps`, {
     fields: 'subscribed_fields',
     access_token: token,
-  });
+  }, host);
   const dados = (bruto as { data?: unknown })?.data;
   if (!Array.isArray(dados)) return [];
   return [
@@ -52,4 +53,56 @@ export async function camposInscritos(
 /** Os campos pedidos que não voltaram. Vazio é a resposta boa. */
 export function camposQueFaltam(inscritos: readonly string[]): string[] {
   return WEBHOOK_FIELDS.split(',').filter((campo) => !inscritos.includes(campo));
+}
+
+export type AssinaturaDoAplicativo = {
+  callbackUrl: string | null;
+  ativa: boolean;
+  campos: string[];
+};
+
+/**
+ * O que o **aplicativo** está assinado para receber.
+ *
+ * Isto é outra coisa do que `camposInscritos`, e a diferença custou uma tarde
+ * em 29/10/2026. A conta pode estar inscrita em tudo — a tela da Meta liga
+ * essa chave sozinha — e, se o aplicativo não tiver nenhum campo marcado, a
+ * Meta aceita a configuração, verifica o endereço, responde 200 ao desafio e
+ * **não entrega evento nenhum**. Nenhuma tela dizia isso.
+ *
+ * Na configuração antiga os campos já vinham marcados; na de login unificado
+ * nascem todos desmarcados, então isso deixou de ser caso raro e virou o
+ * estado inicial de toda instalação nova.
+ *
+ * Pergunta-se com o token do aplicativo — o id e o segredo juntos —, que não
+ * fala pela conta de ninguém e não depende de quem conectou. Sempre em
+ * `graph.facebook.com`: a assinatura é do aplicativo, não da conta, e mora lá
+ * nos dois dialetos.
+ */
+export async function assinaturaDoAplicativo(
+  appId: string,
+  appSecret: string,
+): Promise<AssinaturaDoAplicativo | null> {
+  const bruto = await metaGet(
+    `/${GRAPH_VERSION}/${appId}/subscriptions`,
+    { access_token: `${appId}|${appSecret}` },
+    GRAPH_UNIFICADO,
+  );
+  const dados = (bruto as { data?: unknown })?.data;
+  if (!Array.isArray(dados)) return null;
+  const instagram = dados.find(
+    (item) => (item as { object?: unknown })?.object === 'instagram',
+  ) as { callback_url?: unknown; active?: unknown; fields?: unknown } | undefined;
+  if (!instagram) return null;
+  const campos = Array.isArray(instagram.fields)
+    ? instagram.fields.flatMap((campo) => {
+        const nome = (campo as { name?: unknown })?.name;
+        return typeof nome === 'string' ? [nome] : [];
+      })
+    : [];
+  return {
+    callbackUrl: typeof instagram.callback_url === 'string' ? instagram.callback_url : null,
+    ativa: instagram.active === true,
+    campos,
+  };
 }

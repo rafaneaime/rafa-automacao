@@ -5,6 +5,45 @@ import message from './fixtures/message.json';
 import echo from './fixtures/echo.json';
 import commentAndMessage from './fixtures/comment-and-message.json';
 
+/*
+ * A mesma notificação, com outro nome no identificador do comentário. No login
+ * do Instagram ela chega com `id`; no login unificado — o único oferecido em
+ * app criado a partir de setembro de 2026 — chega com `comment_id`. Ler só uma
+ * das formas faria o painel novo receber o comentário e descartar em silêncio.
+ */
+describe('parseEvents com comentário do login unificado', () => {
+  it('aceita comment_id no lugar de id', () => {
+    const notificacao = {
+      object: 'instagram',
+      entry: [{
+        id: '17841400000000000',
+        time: 1761700000,
+        changes: [{
+          field: 'comments',
+          value: {
+            comment_id: '17900000000000001',
+            from: { id: '9876543210', username: 'fulana' },
+            text: 'quero',
+            media: { id: '18000000000000000' },
+          },
+        }],
+      }],
+    };
+
+    expect(parseEvents(notificacao)).toEqual([
+      {
+        kind: 'comment',
+        accountIgId: '17841400000000000',
+        commentId: '17900000000000001',
+        text: 'quero',
+        fromId: '9876543210',
+        fromUsername: 'fulana',
+        mediaId: '18000000000000000',
+      },
+    ]);
+  });
+});
+
 describe('parseEvents com comentário', () => {
   it('extrai todos os campos', () => {
     expect(parseEvents(comment)).toEqual([

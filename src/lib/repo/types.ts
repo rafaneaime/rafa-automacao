@@ -1,3 +1,4 @@
+import type { Dialeto } from '../meta/dialeto';
 import type { MatchMode } from '../matching';
 import type { Button } from '../meta/messaging';
 
@@ -7,6 +8,8 @@ export type Account = {
   username: string | null;
   accessToken: string;
   tokenExpiresAt: Date | null;
+  /** Qual porta da Meta esta conta usa. Ver `lib/meta/dialeto.ts`. */
+  dialeto: Dialeto;
 };
 
 export type AutomationStep = {

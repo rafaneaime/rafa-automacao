@@ -1,0 +1,13 @@
+-- Por qual porta da Meta cada conta conectada fala.
+--
+-- Em setembro de 2026 a Meta lançou a API do Instagram com login unificado e
+-- parou de oferecer a configuração com login do Instagram em app novo: quem
+-- cria o aplicativo hoje só enxerga a nova. As duas continuam valendo, e um
+-- painel pode ter uma conta de cada — por isso a coluna é da conta, não da
+-- instalação.
+--
+-- O padrão é 'instagram' porque é o que toda conta já conectada usa. Nenhuma
+-- linha existente muda de comportamento por causa desta migração.
+--
+-- 030 e 031 estão reservados para o atendimento, que nasceu em outra branch.
+alter table accounts add column if not exists dialeto text not null default 'instagram';

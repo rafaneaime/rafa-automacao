@@ -24,9 +24,17 @@ nome:
 # --- O app do Instagram, do portal do Meta ---
 IG_APP_ID:
 IG_APP_SECRET:
-# O token gerado em Casos de uso > Personalizar > Configuracao da API com
-# login do Instagram > Gerar token. Comeca com IGAA e passa de cem caracteres.
+# O token gerado em Casos de uso > Personalizar > a configuracao da API do seu
+# aplicativo > Gerar token. Nos aplicativos antigos a configuracao se chama
+# "com login do Instagram" e o token comeca com IGAA; nos criados a partir de
+# setembro de 2026 ela se chama "com login unificado" e o token comeca com EAA.
+# Nos dois casos passa de cem caracteres.
 ACCESS_TOKEN:
+
+# So nos aplicativos novos, os de login unificado: o numero que aparece
+# embaixo do nome da conta, na mesma tela do token. Nos antigos deixe em
+# branco, que o painel descobre a conta sozinho.
+IG_USER_ID:
 
 # --- O painel ---
 # Aparece na politica de privacidade, para quem quiser pedir remocao dos dados.

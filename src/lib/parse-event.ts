@@ -67,7 +67,14 @@ function parseComment(accountIgId: string, value: unknown): CommentEvent | null 
   const from = asRecord(v.from);
   const media = asRecord(v.media);
 
-  const commentId = asString(v.id);
+  /*
+   * `id` no login do Instagram, `comment_id` no login unificado — mesma
+   * notificação, mesmo campo `comments`, nome diferente. Quem instalou antes
+   * recebe a primeira forma; quem instalar daqui pra frente recebe a segunda,
+   * porque a Meta só oferece a configuração nova para app novo. As duas têm
+   * que viver juntas aqui pelo tempo que as duas existirem lá.
+   */
+  const commentId = asString(v.id) ?? asString(v.comment_id);
   const fromId = from ? asString(from.id) : null;
   if (!commentId || !fromId) return null;
 

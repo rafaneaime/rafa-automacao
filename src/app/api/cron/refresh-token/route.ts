@@ -15,6 +15,16 @@ export async function GET(request: NextRequest) {
   const account = await getFirstAccount();
   if (!account) return Response.json({ ok: true, acao: 'nenhuma conta conectada' });
 
+  /*
+   * Token do login unificado é de usuário do sistema e não expira — a própria
+   * tela da Meta escreve "Expiração: nunca". Pedir `ig_refresh_token` para ele
+   * é erro todo dia, e erro diário que não significa nada é como se deixa de
+   * olhar para o que significa.
+   */
+  if (account.dialeto === 'unificado') {
+    return Response.json({ ok: true, acao: 'token do login unificado não expira' });
+  }
+
   const diasRestantes = account.tokenExpiresAt
     ? (new Date(account.tokenExpiresAt).getTime() - Date.now()) / 86_400_000
     : 0;

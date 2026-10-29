@@ -758,6 +758,19 @@ if (-not (JaTem 'DATABASE_URL')) {
 if (-not (JaTem 'IG_APP_ID'))      { $novos['IG_APP_ID']      = Campo 'IG_APP_ID' "IG_APP_ID (numero do app do Instagram)" $false }
 if (-not (JaTem 'IG_APP_SECRET'))  { $novos['IG_APP_SECRET']  = Campo 'IG_APP_SECRET' "IG_APP_SECRET" $true }
 if (-not (JaTem 'ACCESS_TOKEN'))   { $novos['ACCESS_TOKEN']   = Campo 'ACCESS_TOKEN' "ACCESS_TOKEN (o token gerado no portal)" $true }
+# So os aplicativos criados a partir de setembro de 2026 precisam deste. Neles
+# a Meta entrega um token que funciona na conta mas nao diz qual e ela. O
+# numero fica embaixo do nome da conta, na mesma tela do token. Em branco nos
+# aplicativos antigos, e a conexao descobre a conta sozinha como sempre fez.
+if (-not (JaTem 'IG_USER_ID')) {
+  $idDaConta = CampoOpcional 'IG_USER_ID'
+  if (-not $idDaConta -and -not $COM_FICHA) {
+    # Read-Host direto porque `Campo` insiste ate vir resposta, e aqui Enter em
+    # branco e a resposta certa na maioria das instalacoes de hoje.
+    $idDaConta = (Read-Host -Prompt "   Id da conta do Instagram (so nos apps novos; Enter para pular)").Trim()
+  }
+  if ($idDaConta) { $novos['IG_USER_ID'] = $idDaConta }
+}
 if (-not (JaTem 'EMAIL_CONTATO'))  { $novos['EMAIL_CONTATO']  = Campo 'EMAIL_CONTATO' "E-mail de contato (aparece na politica de privacidade)" $false }
 
 # A senha em branco na ficha nao e esquecimento: e "sorteia uma". Ela aparece

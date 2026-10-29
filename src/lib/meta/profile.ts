@@ -1,4 +1,4 @@
-import { metaGet, GRAPH_VERSION } from './client';
+import { metaGet, GRAPH_BASE, GRAPH_VERSION } from './client';
 
 /**
  * Quem é a pessoa do outro lado de uma mensagem direta.
@@ -17,12 +17,13 @@ import { metaGet, GRAPH_VERSION } from './client';
 export async function getPerfilDaConversa(
   igUserId: string,
   token: string,
+  host = GRAPH_BASE,
 ): Promise<{ username: string | null; nome: string | null }> {
   try {
     const raw = await metaGet(`/${GRAPH_VERSION}/${igUserId}`, {
       fields: 'name,username',
       access_token: token,
-    });
+    }, host);
     const dados = raw as { username?: unknown; name?: unknown };
     const texto = (valor: unknown) =>
       typeof valor === 'string' && valor.trim() !== '' ? valor.trim().slice(0, 120) : null;
@@ -73,12 +74,13 @@ export async function getProfile(
 export async function segueAConta(
   igUserId: string,
   token: string,
+  host = GRAPH_BASE,
 ): Promise<boolean | null> {
   try {
     const raw = await metaGet(`/${GRAPH_VERSION}/${igUserId}`, {
       fields: 'is_user_follow_business',
       access_token: token,
-    });
+    }, host);
     const valor = (raw as { is_user_follow_business?: unknown }).is_user_follow_business;
     return typeof valor === 'boolean' ? valor : null;
   } catch {

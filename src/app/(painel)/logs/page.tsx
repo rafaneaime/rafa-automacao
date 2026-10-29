@@ -10,7 +10,8 @@ import { diagnosticarPessoa } from '@/lib/repo/diagnostico';
 import { listDeliveries } from '@/lib/repo/deliveries';
 import { listRecentEvents } from '@/lib/repo/webhook-events';
 import { resumirEntrega } from '@/lib/painel/resumo-da-entrega';
-import { camposInscritos, camposQueFaltam } from '@/lib/meta/subscribe';
+import { assinaturaDoAplicativo, camposInscritos, camposQueFaltam } from '@/lib/meta/subscribe';
+import { hostDoDialeto } from '@/lib/meta/dialeto';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { NOME_DO_CAMPO } from '@/lib/painel/campos-do-webhook';
 
@@ -64,12 +65,30 @@ export default async function LogsPage({
   const inscricao = await (async () => {
     if (!conta?.accessToken) return { ok: false as const, motivo: 'conta-nao-conectada' as const };
     try {
-      return { ok: true as const, campos: await camposInscritos(conta.igUserId, conta.accessToken) };
+      return {
+        ok: true as const,
+        campos: await camposInscritos(conta.igUserId, conta.accessToken, hostDoDialeto(conta.dialeto)),
+      };
     } catch {
       return { ok: false as const, motivo: 'nao-respondeu' as const };
     }
   })();
   const faltando = inscricao.ok ? camposQueFaltam(inscricao.campos) : [];
+
+  /*
+   * A outra metade da mesma pergunta, e a que ninguém fazia.
+   *
+   * A conta pode estar inscrita em tudo e o aplicativo em nada — e aí a Meta
+   * verifica o endereço, responde ao desafio e não entrega evento algum. Na
+   * configuração de login unificado os campos nascem **todos desmarcados**,
+   * então esse é o estado inicial de toda instalação nova. Melhor esforço:
+   * esta tela nunca pode quebrar por causa de um diagnóstico.
+   */
+  const assinatura = await assinaturaDoAplicativo(
+    process.env.IG_APP_ID ?? '',
+    process.env.IG_APP_SECRET ?? '',
+  ).catch(() => null);
+  const faltandoNoApp = assinatura ? camposQueFaltam(assinatura.campos) : [];
 
   const temInteracao = Boolean(
     diagnostico && (diagnostico.webhooks.total > 0 || diagnostico.eventos.total > 0),
@@ -208,22 +227,39 @@ export default async function LogsPage({
                 )}
               </ul>
               {/*
-                Estar na lista não é garantia de entrega, e dizer o contrário
-                custa caro. Numa instalação, "comentário em post" aparecia aqui
-                e nenhum comentário chegava: a conta pede os avisos, mas quem
-                entrega é o aplicativo no portal da Meta, e ele tem a própria
-                lista de campos assinados. Essa segunda lista não dá para ler
-                por API com as credenciais que a instalação tem — então a tela
-                diz onde olhar em vez de fingir que sabe.
+                Estar na lista da conta não é garantia de entrega: quem entrega
+                é o aplicativo, e ele tem a própria lista de campos assinados.
+                Esta tela dizia que essa segunda lista não dava para ler por
+                API — estava errado, e isso custou uma tarde em 29/10/2026. Dá:
+                com o token do aplicativo, que é o id e o segredo juntos, e os
+                dois estão em toda instalação. Agora a tela lê em vez de mandar
+                o leitor conferir à mão.
               */}
-              {faltando.length === 0 && (
+              {assinatura === null ? (
                 <p className="mt-4 text-sm text-tinta-media">
-                  Esta é a lista que a <strong>sua conta</strong> pediu. Se um
-                  aviso está aqui e mesmo assim nunca chega nada dele, o lugar
-                  de olhar é o aplicativo no portal da Meta: em Webhooks, na
-                  seção do Instagram, cada campo tem o próprio botão de
-                  inscrever. Conta inscrita e aplicativo sem o campo marcado dá
-                  exatamente isto — uma lista bonita aqui e silêncio lá embaixo.
+                  Não consegui ler o que o <strong>aplicativo</strong> está assinado
+                  para receber. Confira em Webhooks, na seção do Instagram, no portal
+                  da Meta: conta inscrita e aplicativo sem campo marcado dá silêncio
+                  aqui embaixo, com tudo parecendo certo em cima.
+                </p>
+              ) : faltandoNoApp.length > 0 ? (
+                <div className="mt-4 text-sm">
+                  <p className="font-medium">
+                    O aplicativo não está assinado em:{' '}
+                    {faltandoNoApp.map((c) => NOME_DO_CAMPO[c] ?? c).join(', ')}.
+                  </p>
+                  <p className="mt-1 text-tinta-media">
+                    Esses avisos não chegam aqui, por mais que a conta os peça. No
+                    portal da Meta, em Webhooks → Instagram, cada campo tem o próprio
+                    botão de assinar. Na configuração de login unificado eles nascem
+                    todos desmarcados.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-tinta-media">
+                  O aplicativo está assinado em todos os avisos que o painel usa, e
+                  entrega em{' '}
+                  <span className="break-all">{assinatura.callbackUrl ?? 'nenhum endereço'}</span>.
                 </p>
               )}
               {faltando.length > 0 && (

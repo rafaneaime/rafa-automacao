@@ -116,9 +116,12 @@ export async function resolveLongLivedToken(
       if (naoEhToken) {
         throw new Error(
           'A Meta não reconheceu esse valor como um token de acesso. ' +
-            'Volte em Casos de uso → Personalizar → Configuração da API com ' +
-            'login do Instagram, clique em "Gerar token" e copie o valor novo ' +
-            'inteiro — ele costuma começar com IGAA e passar de cem caracteres. ' +
+            'Volte em Casos de uso → Personalizar e abra a configuração da API ' +
+            'do seu aplicativo — "com login do Instagram" nos aplicativos ' +
+            'antigos, "com login unificado" nos criados a partir de setembro ' +
+            'de 2026, que é a única que a Meta oferece agora. Clique em ' +
+            '"Gerar token" e copie o valor novo inteiro: ele passa de cem ' +
+            'caracteres e começa com IGAA ou EAA, conforme a configuração. ' +
             'O App Secret e o ID do app, que ficam na mesma página, não servem aqui.',
         );
       }
