@@ -67,10 +67,23 @@ O valor colado não tem forma de token. Quase sempre é o **App Secret** (curto,
 só números e letras de a a f) ou o **ID do app** (só números).
 
 O token certo sai em: portal do Meta → o app dela → **Casos de uso** →
-**Personalizar** → **Configuração da API com login do Instagram** → **Gerar
-token**. Começa com `IGAA` e passa de cem caracteres. Copiar inteiro, colar no
-campo **Token de acesso** da tela de Configuração e clicar em **Conectar /
-reconectar conta**.
+**Personalizar** → a configuração da API do app dela → **Gerar token**. Passa
+de cem caracteres. Copiar inteiro, colar no campo **Token de acesso** da tela
+de Configuração e clicar em **Conectar / reconectar conta**.
+
+A configuração tem dois nomes, e o app dela tem um só:
+
+- **com login unificado**, nos apps criados a partir de setembro de 2026 — o
+  token começa com `EAA` e **não expira**. Aí a conta aparece numa tabela, e o
+  botão de gerar fica **na linha dela**; gerar por fora devolve um token que
+  funciona e não serve. Se a conexão disser que não descobriu a conta, copie
+  também o número de 17 dígitos embaixo do nome e cole no campo do **id da
+  conta**.
+- **com login do Instagram**, nos apps antigos — o token começa com `IGAA` e
+  vale 60 dias, renovados sozinhos pelo painel.
+
+Se só aparecer **com login do Facebook**, o app não está num portfólio
+empresarial. Colocar num resolve, e a aba certa nasce.
 
 ### "Nada chega: ninguém comenta, nada aparece"
 
@@ -80,6 +93,12 @@ assinar. Confira os três no portal. Faltar `comments` explica comentário que n
 chega; faltar `messages` explica DM e resposta de Story que não chegam.
 
 Se o webhook estiver desativado no portal, ligue antes de qualquer outra coisa.
+
+Antes de ir ao portal, abra a tela de **Logs** do painel dela: ela pergunta à
+Meta o que a conta pede **e** o que o aplicativo está assinado para entregar, e
+nomeia o que faltar dos dois lados. Nos apps de login unificado **nenhum campo
+vem marcado** — a Meta aceita o endereço, responde ao teste de verificação e
+não entrega nada. É hoje a causa mais comum de "configurei tudo e não chega".
 
 ### "A conexão com o Claude não funciona"
 
