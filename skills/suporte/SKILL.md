@@ -100,6 +100,22 @@ nomeia o que faltar dos dois lados. Nos apps de login unificado **nenhum campo
 vem marcado** — a Meta aceita o endereço, responde ao teste de verificação e
 não entrega nada. É hoje a causa mais comum de "configurei tudo e não chega".
 
+### "Comentário funciona, mas resposta de Story e DM não chegam"
+
+Esse recorte tem uma causa só: a chave **"Permitir acesso a mensagens"**
+desligada na conta do Instagram. No app: **Configurações e privacidade →
+Mensagens e respostas de stories → Ferramentas conectadas**.
+
+Desligada, o Instagram não entrega nada que as pessoas mandam. O envio
+continua funcionando, e por isso o eco da DM e a confirmação de leitura
+aparecem nos **Eventos recebidos** — o que faz parecer que mensagem está
+chegando. Não está: repare que só aparecem comentários, ecos e leituras, e
+nunca uma mensagem de alguém.
+
+Confira sempre depois de reconectar a conta. Num painel real ela apareceu
+desligada e passou semanas assim, com a dona achando que ninguém respondia os
+Stories dela.
+
 ### "A conexão com o Claude não funciona"
 
 A chave é criada no painel, em **Chaves**: nome, marque **Leitura** e

@@ -8,7 +8,7 @@ import { IconeGlobo } from '@/lib/painel/icones';
 import { Botao, Cartao, Chip, ESTILO_CAMPO, Secao, TituloDaTela, Vazio } from '@/lib/painel/ui';
 import { diagnosticarPessoa } from '@/lib/repo/diagnostico';
 import { listDeliveries } from '@/lib/repo/deliveries';
-import { listRecentEvents } from '@/lib/repo/webhook-events';
+import { listRecentEvents, recebimentoPorTipo } from '@/lib/repo/webhook-events';
 import { resumirEntrega } from '@/lib/painel/resumo-da-entrega';
 import { assinaturaDoAplicativo, camposInscritos, camposQueFaltam } from '@/lib/meta/subscribe';
 import { hostDoDialeto } from '@/lib/meta/dialeto';
@@ -84,6 +84,12 @@ export default async function LogsPage({
    * então esse é o estado inicial de toda instalação nova. Melhor esforço:
    * esta tela nunca pode quebrar por causa de um diagnóstico.
    */
+  // Chega comentário e nunca chega mensagem: ver `recebimentoPorTipo`.
+  const recebimento = await recebimentoPorTipo().catch(() => null);
+  const mensagemNuncaChega = Boolean(
+    recebimento && recebimento.comentarios >= 3 && recebimento.entrada === 0,
+  );
+
   const assinatura = await assinaturaDoAplicativo(
     process.env.IG_APP_ID ?? '',
     process.env.IG_APP_SECRET ?? '',
@@ -204,6 +210,22 @@ export default async function LogsPage({
                 próprio post.
               </span>
             </p>
+          )}
+          {mensagemNuncaChega && (
+            <div className="mb-3 rounded-lg bg-caindo-tenue px-4 py-3 text-sm">
+              <p className="font-medium text-caindo-forte">
+                Comentário chega aqui e mensagem nunca chegou.
+              </p>
+              <p className="mt-1 text-tinta-media">
+                Nos últimos 30 dias entraram comentários, e nenhuma mensagem de
+                ninguém — nem DM, nem resposta de Story. Isso quase sempre é uma
+                chave desligada na conta do Instagram:{' '}
+                <strong>Configurações e privacidade → Mensagens e respostas de
+                stories → Ferramentas conectadas → Permitir acesso a mensagens</strong>.
+                Enquanto ela estiver desligada, o envio funciona e o recebimento não,
+                e nada mais no painel denuncia isso.
+              </p>
+            </div>
           )}
           {!inscricao.ok ? (
             <p className="text-sm">

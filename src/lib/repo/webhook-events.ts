@@ -50,3 +50,40 @@ export async function listRecentEvents(limit = 50): Promise<WebhookEventLog[]> {
     raw: r.raw,
   }));
 }
+
+/**
+ * Chega comentário e não chega mensagem?
+ *
+ * Esse recorte tem uma causa só, e nenhuma tela dizia qual: a chave "Permitir
+ * acesso a mensagens" desligada na conta do Instagram. Com ela desligada o
+ * envio continua funcionando — o eco da DM e a confirmação de leitura voltam
+ * normalmente —, e o Instagram não entrega **nada** que as pessoas mandam.
+ * Resposta de Story e DM recebida somem, e do lado de cá é idêntico a
+ * "ninguém mandou mensagem".
+ *
+ * Num painel real isso passou semanas assim, com a dona achando que ninguém
+ * respondia os Stories dela. A diferença entre as duas situações está nos
+ * webhooks guardados, e é isto que esta consulta lê.
+ *
+ * `entrada` conta só mensagem vinda de fora: eco é o que nós mandamos, e
+ * confirmação de leitura não é mensagem de ninguém.
+ */
+export async function recebimentoPorTipo(dias = 30): Promise<{ comentarios: number; entrada: number }> {
+  const rows = (await sql`
+    select
+      count(*) filter (where raw like '%"comments"%') as comentarios,
+      count(*) filter (
+        where raw like '%"messaging"%'
+          and raw not like '%"is_echo":true%'
+          and raw not like '%"read"%'
+          and raw like '%"text"%'
+      ) as entrada
+    from webhook_events
+    where received_at > now() - make_interval(days => ${dias})
+  `) as { comentarios: number | string; entrada: number | string }[];
+
+  return {
+    comentarios: Number(rows[0]?.comentarios ?? 0),
+    entrada: Number(rows[0]?.entrada ?? 0),
+  };
+}
