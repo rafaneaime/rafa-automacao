@@ -11,6 +11,51 @@ import commentAndMessage from './fixtures/comment-and-message.json';
  * app criado a partir de setembro de 2026 — chega com `comment_id`. Ler só uma
  * das formas faria o painel novo receber o comentário e descartar em silêncio.
  */
+/*
+ * 29/10/2026, num painel real: num Story de pergunta aberta, de 48 respostas
+ * recebidas num dia, cerca de 15 não viraram evento nenhum — eram figurinha,
+ * emoji ou foto, e o leitor exigia texto. A automação sem palavra-chave, que
+ * existe para responder qualquer coisa, ficava muda e nada explicava por quê.
+ */
+describe('parseEvents com mensagem sem texto', () => {
+  const comMensagem = (message: Record<string, unknown>) => ({
+    object: 'instagram',
+    entry: [{
+      id: '17841400000000000',
+      time: 1762000000,
+      messaging: [{ sender: { id: '9876543210' }, recipient: { id: '17841400000000000' }, timestamp: 1762000000, message }],
+    }],
+  });
+
+  it('resposta de Story com figurinha vira evento de texto vazio', () => {
+    expect(parseEvents(comMensagem({
+      mid: 'm1',
+      attachments: [{ type: 'image', payload: { url: 'https://exemplo/figurinha.png' } }],
+      reply_to: { story: { id: '123', url: 'https://exemplo/story' } },
+    }))).toEqual([
+      {
+        kind: 'message',
+        accountIgId: '17841400000000000',
+        fromId: '9876543210',
+        text: '',
+        mid: 'm1',
+        story: { id: '123', url: 'https://exemplo/story' },
+      },
+    ]);
+  });
+
+  it('DM só com foto também vira evento', () => {
+    const [evento] = parseEvents(comMensagem({ mid: 'm2', attachments: [{ type: 'image' }] }));
+    expect(evento).toMatchObject({ kind: 'message', text: '', story: null });
+  });
+
+  // Sem texto, sem anexo e sem Story não sobra mensagem nenhuma: isso é outro
+  // tipo de aviso passando pelo mesmo campo, e inventar um evento seria pior.
+  it('item sem texto, sem anexo e sem Story continua fora', () => {
+    expect(parseEvents(comMensagem({ mid: 'm3' }))).toEqual([]);
+  });
+});
+
 describe('parseEvents com comentário do login unificado', () => {
   it('aceita comment_id no lugar de id', () => {
     const notificacao = {

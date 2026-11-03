@@ -118,15 +118,36 @@ function parseMessaging(accountIgId: string, item: unknown): MessageEvent | null
 
   const fromId = asString(sender.id);
   const text = asString(message.text);
-  if (!fromId || text === null) return null;
+  const story = lerRespostaDeStory(message);
+  if (!fromId) return null;
+
+  /*
+   * Mensagem sem texto é mensagem.
+   *
+   * Figurinha, emoji solto, reação, foto, áudio — tudo isso chega sem `text`,
+   * e até 02/11/2026 era descartado aqui. O evento não virava nem "ignorado":
+   * sumia antes de qualquer automação ver, e na tela de Logs aparecia como
+   * "entrega sem comentário nem mensagem", que não diz nada a ninguém.
+   *
+   * Num painel real, num Story de pergunta aberta, isso foi um terço das
+   * respostas de um dia. Quem pede "responde aí" e recebe um emoji não acha
+   * que mandou nada menos que texto — e a automação sem palavra-chave, que
+   * existe justamente para responder qualquer coisa, ficava muda.
+   *
+   * O texto vazio é o que a pessoa disse em palavras: nenhuma. Automação com
+   * palavra-chave continua não casando, que é o certo; a sem palavra-chave
+   * responde, que também é o certo.
+   */
+  const semTexto = text === null;
+  if (semTexto && !story && !message.attachments) return null;
 
   return {
     kind: 'message',
     accountIgId,
     fromId,
-    text,
+    text: text ?? '',
     mid: asString(message.mid),
-    story: lerRespostaDeStory(message),
+    story,
   };
 }
 
