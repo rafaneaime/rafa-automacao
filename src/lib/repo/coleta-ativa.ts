@@ -1,5 +1,13 @@
 import { sql } from '../db';
 
+/** A política acompanha dados instalados, mesmo com captura temporariamente desligada. */
+export async function atendimentoWhatsAppDisponivel(): Promise<boolean> {
+  try {
+    const rows = await sql`select to_regclass('public.inbox_conversations') is not null as existe`;
+    return rows[0]?.existe === true;
+  } catch { return process.env.RADAR_INBOX_ENABLED?.trim() === 'true'; }
+}
+
 /**
  * Esta instalação coleta eventos em algum site próprio?
  *

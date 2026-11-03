@@ -47,8 +47,9 @@ export function publicReply(
   message: string,
   token: string,
   host = GRAPH_BASE,
+  signal?: AbortSignal,
 ): Promise<unknown> {
-  return metaPost(`/${commentId}/replies`, token, { message }, {}, host);
+  return metaPost(`/${commentId}/replies`, token, { message }, {}, host, signal);
 }
 
 export function privateReply(
@@ -58,11 +59,12 @@ export function privateReply(
   buttons: Button[],
   token: string,
   host = GRAPH_BASE,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   return metaPost(`/${accountIgId}/messages`, token, {
     recipient: { comment_id: commentId },
     message: buildMessagePayload(text, buttons),
-  }, {}, host);
+  }, {}, host, signal);
 }
 
 export function sendDm(
@@ -71,10 +73,14 @@ export function sendDm(
   text: string,
   buttons: Button[],
   token: string,
+  // Compatibilidade com o ProcessDeps da Base. Identificador interno para
+  // atribuição/rastreamento; não é um campo aceito pelo endpoint da Meta.
+  _automationId?: number | null,
   host = GRAPH_BASE,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   return metaPost(`/${accountIgId}/messages`, token, {
     recipient: { id: recipientIgId },
     message: buildMessagePayload(text, buttons),
-  }, {}, host);
+  }, {}, host, signal);
 }

@@ -191,7 +191,7 @@ describe('envio respeita o endereço da conta', () => {
     const buscar = vi.fn(async () => Response.json({ message_id: 'm1' }, { status: 200 }));
     vi.stubGlobal('fetch', buscar);
 
-    await sendDm('1784200', '99', 'oi', [], 'EAAtoken', 'https://graph.facebook.com');
+    await sendDm('1784200', '99', 'oi', [], 'EAAtoken', null, 'https://graph.facebook.com');
 
     const [url, opcoes] = buscar.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain('https://graph.facebook.com/');

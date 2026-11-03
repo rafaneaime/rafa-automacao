@@ -53,6 +53,7 @@ export async function metaPost(
   body: unknown,
   query: Record<string, string> = {},
   host = GRAPH_BASE,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const response = await fetch(
     buildUrl(`/${GRAPH_VERSION}${path}`, { ...query, access_token: accessToken }, host),
@@ -60,6 +61,7 @@ export async function metaPost(
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
     },
   );
   return handle(response);

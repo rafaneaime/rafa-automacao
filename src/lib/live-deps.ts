@@ -84,13 +84,14 @@ export const liveDeps: ProcessDeps = {
   },
   /*
    * `sendDm` do Meta já teve menos parâmetros do que a dependência declara, e
-   * por isso era repassado direto. Agora o sexto parâmetro dele é o endereço
-   * da API, e o sexto da dependência é a automação: repassar direto mandaria
-   * um número no lugar da URL e derrubaria toda DM desta instalação. Por isso
-   * o embrulho, mesmo sem link rastreado para carimbar.
+   * por isso era repassado direto. Hoje o sexto dele é a automação — que ele
+   * ignora, e existe só para as duas assinaturas baterem — e o sétimo é o
+   * endereço da API. Repassar direto mandaria um número no lugar da URL e
+   * derrubaria toda DM desta instalação. Por isso o embrulho, mesmo sem link
+   * rastreado para carimbar.
    */
   async sendDm(accountIgId, recipientIgId, text, buttons, token) {
-    return sendDm(accountIgId, recipientIgId, text, buttons, token, await hostDaConta(accountIgId, token));
+    return sendDm(accountIgId, recipientIgId, text, buttons, token, null, await hostDaConta(accountIgId, token));
   },
   findSentDelivery,
   findAutomationById: getAutomation,

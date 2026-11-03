@@ -1,5 +1,5 @@
 import { env } from '@/lib/env';
-import { coletaEmSiteAtiva } from '@/lib/repo/coleta-ativa';
+import { atendimentoWhatsAppDisponivel, coletaEmSiteAtiva } from '@/lib/repo/coleta-ativa';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export default async function PrivacidadePage() {
   const email = env.emailContato();
   const coletaEmSite = await coletaEmSiteAtiva();
+  const inbox = await atendimentoWhatsAppDisponivel();
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 text-tinta">
@@ -38,6 +39,12 @@ export default async function PrivacidadePage() {
         </p>
       </section>
 
+      {inbox && <section className="mb-8">
+        <h2 className="mb-2 text-lg font-medium">Atendimento no Instagram e no WhatsApp</h2>
+        <p className="text-sm leading-relaxed text-tinta-media">Quando os canais são conectados e o atendimento é utilizado, esta instalação também organiza conversas para resposta humana. Armazena mensagens recebidas e enviadas, número de telefone ou identificador do canal, nome quando disponível, datas, tipos de conteúdo, identificadores de mensagens e confirmações de envio ou leitura recebidas da API. Registra estados do atendimento e conferências feitas pelo operador para evitar reenvios e recuperar atendimentos interrompidos. Arquivos sem visualização no painel são identificados pelo tipo; não há importação automática de todo o histórico anterior.</p>
+        <p className="mt-3 text-sm leading-relaxed text-tinta-media">Esses registros são usados para atender solicitações, organizar o relacionamento no Radar e prevenir duplicação de respostas. Responder uma conversa não registra automaticamente consentimento para campanhas de marketing. O software não conecta um serviço de inteligência artificial para tratar essas mensagens nesta etapa.</p>
+      </section>}
+
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Quais dados são coletados</h2>
         <p className="mb-2 text-sm leading-relaxed text-tinta-media">
@@ -68,6 +75,8 @@ export default async function PrivacidadePage() {
               rastreamento em outras partes do Instagram nem em sites de
               terceiros.
             </>
+          ) : inbox ? (
+            <>O atendimento recebe dados pelas APIs dos canais conectados, incluindo Instagram e WhatsApp. Não há rastreamento em outras partes desses aplicativos por este inbox.</>
           ) : (
             <>
               Não é coletado nenhum dado além do que chega através da própria API
@@ -118,6 +127,7 @@ export default async function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Por que esses dados são usados</h2>
+        {inbox ? <p className="text-sm leading-relaxed text-tinta-media">Os dados são usados para responder solicitações nos canais conectados, manter o histórico e o contexto do atendimento e registrar tentativas e conferências de envio. Ficam na instalação do operador. Não são vendidos pelo autor do software.</p> :
         <p className="text-sm leading-relaxed text-tinta-media">
           Os dados são usados exclusivamente para: (1) enviar a resposta
           automática que a própria pessoa provocou ao comentar ou mandar
@@ -125,7 +135,7 @@ export default async function PrivacidadePage() {
           a mesma pessoa. Os dados não são usados para propaganda, não são
           analisados para perfis de comportamento, e não são vendidos ou
           repassados a terceiros.
-        </p>
+        </p>}
       </section>
 
       <section className="mb-8">
@@ -166,6 +176,7 @@ export default async function PrivacidadePage() {
 
       <section className="mb-8">
         <h2 className="mb-2 text-lg font-medium">Papel do Meta / Instagram</h2>
+        {inbox && <p className="mb-3 text-sm leading-relaxed text-tinta-media">O WhatsApp utiliza a API da Meta: mensagens e confirmações passam por esse serviço antes de serem recebidas e armazenadas nesta instalação. O mesmo vale para respostas enviadas pelo painel.</p>}
         <p className="text-sm leading-relaxed text-tinta-media">
           Os dados chegam a esta aplicação através da API do Instagram
           (Meta), por meio de webhooks configurados na Plataforma Meta para

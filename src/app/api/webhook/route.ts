@@ -94,6 +94,13 @@ export async function POST(request: NextRequest) {
   const results: ProcessResult[] = [];
   let parseError: string | null = null;
 
+  // Pro opt-in: captura durável ANTES de qualquer automação. Sem captura não
+  // confirmamos a entrega; a reentrega é deduplicada pelo inbox e pelo pipeline.
+  if (liveDeps.captureInbox) {
+    try { await liveDeps.captureInbox(JSON.parse(rawBody)); }
+    catch { return new Response('Não foi possível salvar a conversa.', { status: 503 }); }
+  }
+
   try {
     for (const event of parseEvents(JSON.parse(rawBody))) {
       results.push(await processEvent(event, liveDeps));

@@ -32,6 +32,10 @@ export const AVISO_SEM_CONFIRMAR =
 
 
 export type ProcessDeps = {
+  runConversation?(event: NormalizedEvent, run: () => Promise<ProcessResult>): Promise<ProcessResult>;
+  /** Extensões Pro opcionais; a distribuição Base não importa o inbox. */
+  captureInbox?(payload: unknown): Promise<void>;
+  manualConversation?(accountIgId: string, peer: string): Promise<boolean>;
   findAccount(
     accountIgId: string,
   ): Promise<{ id: number; igUserId: string; accessToken: string } | null>;
@@ -602,6 +606,18 @@ async function processMessage(
     return { outcome: 'duplicate', automationId: 0 };
   }
 
+  // Consumir o mid também durante tomada manual: retomar não reproduz o que
+  // o humano já recebeu, mesmo se a Meta reentregar a mensagem depois.
+  try {
+    if (await deps.manualConversation?.(event.accountIgId, event.fromId)) {
+      return { outcome: 'ignored', reason: 'conversa em atendimento manual ou encerrada' };
+    }
+  } catch (error) {
+    // Não consumir a mensagem se nem foi possível consultar a tomada manual.
+    if (event.mid) await deps.releaseMessage(account.id, event.mid);
+    throw error;
+  }
+
   const resultadoDaMensagem = await processarMensagem(event, account, deps);
 
   // Falha solta a reserva: sem isso, a reentrega seguinte seria recusada como
@@ -741,7 +757,8 @@ export function processEvent(
   event: NormalizedEvent,
   deps: ProcessDeps,
 ): Promise<ProcessResult> {
-  return event.kind === 'comment'
+  const run = () => event.kind === 'comment'
     ? processComment(event, deps)
     : processMessage(event, deps);
+  return deps.runConversation ? deps.runConversation(event, run) : run();
 }
