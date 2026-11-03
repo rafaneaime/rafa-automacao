@@ -1,4 +1,4 @@
 {
-  "versao": "2026-11-02T22:15",
-  "novidades": "Resposta de Story com figurinha, emoji ou foto agora aciona a automacao: antes so contava quem digitava texto, e o resto sumia sem aparecer nem nos registros."
+  "versao": "2026-11-03T15:07",
+  "novidades": "A tela da automacao volta a listar as postagens em quem conectou pelo caminho novo da Meta, e resposta de Story com figurinha ou emoji passa a acionar a automacao."
 }

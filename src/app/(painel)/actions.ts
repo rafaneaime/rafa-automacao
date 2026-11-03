@@ -6,6 +6,7 @@ import { requirePanelSession } from '@/lib/auth';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { contatosSemUsername, gravarPerfilSeAusente } from '@/lib/repo/contacts';
 import { getPerfilDaConversa } from '@/lib/meta/profile';
+import { hostDoDialeto } from '@/lib/meta/dialeto';
 import {
   createAutomation,
   getAutomation,
@@ -62,7 +63,7 @@ export async function completarPerfisDeContatos() {
     // outros. Ele continua na lista para a próxima vez.
     await gravarPerfilSeAusente(
       contato.id,
-      await getPerfilDaConversa(contato.igUserId, account.accessToken),
+      await getPerfilDaConversa(contato.igUserId, account.accessToken, hostDoDialeto(account.dialeto)),
     );
   }
 

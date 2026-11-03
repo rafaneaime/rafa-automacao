@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { hostProvavelDoToken, identificarConta } from '@/lib/meta/dialeto';
 import { sendDm } from '@/lib/meta/messaging';
 import { assinaturaDoAplicativo, camposQueFaltam } from '@/lib/meta/subscribe';
+import { listMedia } from '@/lib/meta/media';
 
 /*
  * 29/10/2026: a Meta parou de oferecer a configuração com login do Instagram
@@ -164,6 +165,24 @@ describe('o que o aplicativo está assinado para receber', () => {
   it('aplicativo sem assinatura nenhuma devolve nulo, e não lista vazia', async () => {
     vi.stubGlobal('fetch', responder({ '/subscriptions': { data: [] } }));
     expect(await assinaturaDoAplicativo('123', 'segredo')).toBeNull();
+  });
+});
+
+/*
+ * 03/11/2026: numa instalação nova a tela da automação dizia que não achava as
+ * postagens. Era este módulo, esquecido quando os outros ganharam o endereço:
+ * perguntava no antigo, com um token que só o novo entende. Erro de leitura,
+ * então a tela mostrava "nenhuma postagem" em vez de dizer o que houve.
+ */
+describe('a lista de postagens também respeita o endereço da conta', () => {
+  it('usa o host informado e mantém o antigo como padrão', async () => {
+    const buscar = vi.fn(async (_url: string) => Response.json({ data: [] }, { status: 200 }));
+    vi.stubGlobal('fetch', buscar);
+
+    await listMedia('1784', 'EAAtoken', 'https://graph.facebook.com');
+    expect(buscar.mock.calls[0][0]).toContain('https://graph.facebook.com/');
+    await listMedia('1784', 'IGAAtoken');
+    expect(buscar.mock.calls[1][0]).toContain('https://graph.instagram.com/');
   });
 });
 

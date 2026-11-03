@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getAutomation } from '@/lib/repo/automations';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { listMedia, type Media } from '@/lib/meta/media';
+import { hostDoDialeto } from '@/lib/meta/dialeto';
 import { salvarAutomacao, excluirAutomacao } from '../../actions';
 import { BotoesSalvar } from './botoes-salvar';
 import { CamposDeVariacoes } from './campo-variacoes';
@@ -32,7 +33,7 @@ export default async function EditorPage({
 
   if (account) {
     try {
-      midias = await listMedia(account.igUserId, account.accessToken);
+      midias = await listMedia(account.igUserId, account.accessToken, hostDoDialeto(account.dialeto));
     } catch (error) {
       erroMidias = String(error);
     }
