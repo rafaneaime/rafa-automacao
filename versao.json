@@ -1,4 +1,4 @@
 {
-  "versao": "2026-11-03T15:26",
-  "novidades": "O Atendimento chega nesta versao: as conversas do Instagram e do WhatsApp dentro do proprio painel, com o historico de quem fala com voce e resposta sem sair dali. Ele vem desligado, e a ativacao e feita junto com a gente."
+  "versao": "2026-11-06T11:45",
+  "novidades": "Correcao importante: as automacoes paravam de responder justamente quando havia mais movimento, em live e em story que viraliza. O painel demorava para confirmar o recebimento ao Instagram, e ele ia reduzindo a entrega ate parar. Agora a confirmacao e imediata e o envio acontece em seguida. Quem tem live ou story com muita resposta e quem mais sente a diferenca."
 }

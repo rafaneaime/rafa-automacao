@@ -6,6 +6,7 @@ import { processEvent, type ProcessResult } from '@/lib/process-event';
 import { summarizeResults } from '@/lib/webhook-summary';
 import { liveDeps } from '@/lib/live-deps';
 import { readWebhookBody } from '@/lib/webhook-body';
+import { depois } from '@/lib/depois';
 import {
   recordWebhookEvent,
   markWebhookProcessed,
@@ -15,6 +16,35 @@ import {
 // não há validação de HMAC.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+/*
+ * O trabalho adiado roda dentro desta mesma execução, e o teto de tempo da
+ * função continua valendo para ele.
+ *
+ * Sem esta linha vale o padrão da hospedagem — 10 segundos no plano gratuito,
+ * que é o que quem compra usa. O envio medido leva de 4 a 7 segundos, e o pior
+ * caso registrado bateu 30,8: a Meta receberia a resposta rápida, e a DM seria
+ * cortada no meio, deixando o evento sem `processed_at`. Sessenta é o teto do
+ * plano gratuito, e cobre com folga o pior caso observado.
+ */
+export const maxDuration = 60;
+
+/**
+ * Grava a chegada antes de qualquer processamento.
+ *
+ * Se algo quebrar depois, o evento está salvo. Se o próprio insert falhar
+ * (ex.: banco fora do ar), não existe linha pra marcar — loga no console e
+ * devolve `null`, porque nada foi processado ainda e um 500 só faria o Meta
+ * reentregar a mesma falha.
+ */
+async function registrarEntrada(rawBody: string, valid: boolean): Promise<number | null> {
+  try {
+    return await recordWebhookEvent(rawBody, valid);
+  } catch (error) {
+    console.error('webhook: falha ao gravar webhook_events', error);
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -79,50 +109,60 @@ export async function POST(request: NextRequest) {
     return new Response('Assinatura inválida', { status: 401 });
   }
 
-  // Persistir antes de processar: se algo quebrar depois, o evento está salvo.
-  // Se o próprio insert falhar (ex.: banco fora do ar), não existe linha pra
-  // marcar — loga no console e devolve 200, porque nada foi processado ainda
-  // e um 500 só faria o Meta reentregar a mesma falha.
-  let eventId: number | null = null;
-  try {
-    eventId = await recordWebhookEvent(rawBody, valid);
-  } catch (error) {
-    console.error('webhook: falha ao gravar webhook_events', error);
-    return new Response('EVENT_RECEIVED', { status: 200 });
-  }
-
-  const results: ProcessResult[] = [];
-  let parseError: string | null = null;
+  const eventId = await registrarEntrada(rawBody, valid);
+  if (eventId === null) return new Response('EVENT_RECEIVED', { status: 200 });
 
   // Pro opt-in: captura durável ANTES de qualquer automação. Sem captura não
   // confirmamos a entrega; a reentrega é deduplicada pelo inbox e pelo pipeline.
+  //
+  // Esta parte fica ANTES da resposta de propósito, mesmo depois de o envio ter
+  // saído dela (ver `depois`): são só escritas no banco, rápidas, e o 503 é o
+  // que faz a Meta reentregar. Prometer durabilidade e responder 200 antes de
+  // gravar seria mentir para quem está do outro lado.
   if (liveDeps.captureInbox) {
     try { await liveDeps.captureInbox(JSON.parse(rawBody)); }
     catch { return new Response('Não foi possível salvar a conversa.', { status: 503 }); }
   }
 
-  try {
-    for (const event of parseEvents(JSON.parse(rawBody))) {
-      results.push(await processEvent(event, liveDeps));
+  /*
+   * Daqui para baixo, o trabalho acontece depois de a resposta sair.
+   *
+   * O envio da DM são várias idas à Meta e levava de 4 a 7 segundos dentro
+   * desta requisição — acima do que a Meta tolera, e foi o que a fazia espaçar
+   * e depois parar de entregar comentário de live e resposta de story. O
+   * porquê completo, com os números, está em `src/lib/depois.ts`.
+   *
+   * O evento já está gravado neste ponto: se a hospedagem interromper o que
+   * roda depois, a linha continua nos Logs sem `processed_at` — "chegou e não
+   * terminou", que é um diagnóstico, não um sumiço.
+   */
+  await depois(async () => {
+    const results: ProcessResult[] = [];
+    let parseError: string | null = null;
+
+    try {
+      for (const event of parseEvents(JSON.parse(rawBody))) {
+        results.push(await processEvent(event, liveDeps));
+      }
+    } catch (error) {
+      parseError = String(error);
     }
-  } catch (error) {
-    parseError = String(error);
-  }
 
-  // Persiste todo outcome, não só erro — inclusive ignored/duplicate/
-  // throttled, prefixados pra não parecer falha (ver summarizeResults).
-  const summary = summarizeResults(results);
-  const persistedError =
-    parseError && summary ? `${parseError} | ${summary}` : (parseError ?? summary);
+    // Persiste todo outcome, não só erro — inclusive ignored/duplicate/
+    // throttled, prefixados pra não parecer falha (ver summarizeResults).
+    const summary = summarizeResults(results);
+    const persistedError =
+      parseError && summary ? `${parseError} | ${summary}` : (parseError ?? summary);
 
-  // Os envios (sends) já aconteceram nesse ponto. Se o update falhar, logar
-  // e devolver 200 mesmo assim: um 500 aqui faria o Meta reentregar o
-  // webhook inteiro e duplicar as DMs já enviadas.
-  try {
-    await markWebhookProcessed(eventId, persistedError);
-  } catch (error) {
-    console.error('webhook: falha ao marcar evento processado', error);
-  }
+    // Os envios (sends) já aconteceram nesse ponto. Se o update falhar, logar
+    // e seguir: a resposta à Meta já saiu, e não há 500 que valha duplicar as
+    // DMs já enviadas.
+    try {
+      await markWebhookProcessed(eventId, persistedError);
+    } catch (error) {
+      console.error('webhook: falha ao marcar evento processado', error);
+    }
+  });
 
   // Sempre 200 (menos assinatura inválida/configuração ausente): o evento já
   // está persistido, e devolver erro só faria o Meta reentregar o mesmo
