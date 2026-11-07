@@ -1,4 +1,4 @@
 {
-  "versao": "2026-11-06T11:45",
-  "novidades": "Correcao importante: as automacoes paravam de responder justamente quando havia mais movimento, em live e em story que viraliza. O painel demorava para confirmar o recebimento ao Instagram, e ele ia reduzindo a entrega ate parar. Agora a confirmacao e imediata e o envio acontece em seguida. Quem tem live ou story com muita resposta e quem mais sente a diferenca."
+  "versao": "2026-11-07T01:40",
+  "novidades": "O painel religa o Instagram sozinho. Quando o Instagram cancela o envio de avisos para uma instalacao, nada aparece em tela: o painel simplesmente para de receber comentario e mensagem, e so voltava reconectando a conta a mao. Agora o painel confere isso todo dia, e tambem na hora em que voce abre a tela de Logs, e assina de novo quando precisa. Se tiver acontecido com voce, a tela de Logs diz o que estava cortado e que ja esta religado."
 }

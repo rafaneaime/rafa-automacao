@@ -55,6 +55,71 @@ export function camposQueFaltam(inscritos: readonly string[]): string[] {
   return WEBHOOK_FIELDS.split(',').filter((campo) => !inscritos.includes(campo));
 }
 
+export type Reinscricao = {
+  estado: 'em-ordem' | 'reassinada' | 'nao-resolveu' | 'sem-resposta';
+  /** O que o Instagram está mandando agora. Vazio quando não deu para perguntar. */
+  campos: string[];
+  /** O que faltava quando a conferência começou. É isto que diz que houve corte. */
+  faltavam: string[];
+};
+
+/**
+ * Confere a inscrição e, se estiver faltando campo, assina de novo.
+ *
+ * A Meta cancela a inscrição de quem demora a responder: uma hora de entregas
+ * falhando e o aplicativo sai da conta do aluno. Não aparece erro em tela
+ * nenhuma — o painel simplesmente para de receber, e quem conectou acha que
+ * desinstalou alguma coisa. Era o que acontecia em live e em story com muita
+ * resposta, enquanto o painel levava de 4 a 7 segundos para confirmar cada
+ * mensagem.
+ *
+ * A causa foi corrigida em 06/11/2026: a confirmação sai antes do trabalho.
+ * Mas corrigir a causa não desfaz o corte de quem já foi cortado, e a
+ * inscrição só era pedida num lugar — no momento de conectar a conta. Ou seja:
+ * quem foi cortado ficava fora até alguém mandar reconectar à mão, sem ter
+ * como saber que era isso. Agora o painel confere e remenda sozinho.
+ *
+ * Assinar de novo é inofensivo: a Meta aceita o mesmo pedido quantas vezes
+ * vier e o resultado é o mesmo. Por isso a conferência pode rodar todo dia e
+ * sempre que alguém abre a tela de Logs.
+ *
+ * `nao-resolveu` é a resposta que não se conserta daqui: pedimos, a Meta
+ * aceitou, e o campo continua fora. Isso é o **aplicativo** sem o campo
+ * marcado no portal, e aí a inscrição da conta não tem como suprir —
+ * `assinaturaDoAplicativo` é quem conta essa metade. Repetir o pedido nesse
+ * caso é um gasto pequeno e deliberado, para não precisar guardar estado.
+ *
+ * Nunca lança: é remendo, e remendo que derruba a tela onde se vai quando algo
+ * já está errado é pior do que remendo nenhum.
+ */
+export async function garantirInscricao(
+  accountIgId: string,
+  token: string,
+  host = GRAPH_BASE,
+): Promise<Reinscricao> {
+  let campos: string[];
+  try {
+    campos = await camposInscritos(accountIgId, token, host);
+  } catch {
+    return { estado: 'sem-resposta', campos: [], faltavam: [] };
+  }
+
+  const faltavam = camposQueFaltam(campos);
+  if (faltavam.length === 0) return { estado: 'em-ordem', campos, faltavam: [] };
+
+  try {
+    await subscribeApp(accountIgId, token, host);
+    const agora = await camposInscritos(accountIgId, token, host);
+    return {
+      estado: camposQueFaltam(agora).length === 0 ? 'reassinada' : 'nao-resolveu',
+      campos: agora,
+      faltavam,
+    };
+  } catch {
+    return { estado: 'nao-resolveu', campos, faltavam };
+  }
+}
+
 export type AssinaturaDoAplicativo = {
   callbackUrl: string | null;
   ativa: boolean;

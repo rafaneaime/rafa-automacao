@@ -10,7 +10,7 @@ import { diagnosticarPessoa } from '@/lib/repo/diagnostico';
 import { listDeliveries } from '@/lib/repo/deliveries';
 import { listRecentEvents, recebimentoPorTipo } from '@/lib/repo/webhook-events';
 import { resumirEntrega } from '@/lib/painel/resumo-da-entrega';
-import { assinaturaDoAplicativo, camposInscritos, camposQueFaltam } from '@/lib/meta/subscribe';
+import { assinaturaDoAplicativo, camposQueFaltam, garantirInscricao } from '@/lib/meta/subscribe';
 import { hostDoDialeto } from '@/lib/meta/dialeto';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { NOME_DO_CAMPO } from '@/lib/painel/campos-do-webhook';
@@ -60,18 +60,31 @@ export default async function LogsPage({
    *
    * Falha de rede ou token vencido não derruba a tela de Logs: ela é
    * justamente onde se vai quando algo já está errado.
+   *
+   * Esta tela não só pergunta: se estiver faltando campo, ela assina de novo
+   * antes de desenhar. A Meta cancela a inscrição de quem demora a responder,
+   * e quem foi cancelado não tinha como descobrir que era isso. Aqui é onde a
+   * pessoa chega quando "parou de funcionar" — então é aqui que conserta, e
+   * não só onde fica escrito o que está errado. A rotina diária conserta quem
+   * nunca abriu esta tela.
    */
   const conta = await getFirstAccount();
   const inscricao = await (async () => {
     if (!conta?.accessToken) return { ok: false as const, motivo: 'conta-nao-conectada' as const };
-    try {
-      return {
-        ok: true as const,
-        campos: await camposInscritos(conta.igUserId, conta.accessToken, hostDoDialeto(conta.dialeto)),
-      };
-    } catch {
+    const conferida = await garantirInscricao(
+      conta.igUserId,
+      conta.accessToken,
+      hostDoDialeto(conta.dialeto),
+    );
+    if (conferida.estado === 'sem-resposta') {
       return { ok: false as const, motivo: 'nao-respondeu' as const };
     }
+    return {
+      ok: true as const,
+      campos: conferida.campos,
+      reassinada: conferida.estado === 'reassinada',
+      faltavam: conferida.faltavam,
+    };
   })();
   const faltando = inscricao.ok ? camposQueFaltam(inscricao.campos) : [];
 
@@ -248,6 +261,22 @@ export default async function LogsPage({
                   ))
                 )}
               </ul>
+              {inscricao.reassinada && (
+                <div className="mt-4 text-sm">
+                  <p className="font-medium">
+                    O Instagram havia parado de mandar{' '}
+                    {inscricao.faltavam.map((c) => NOME_DO_CAMPO[c] ?? c).join(', ')}{' '}
+                    para este painel. Já está religado.
+                  </p>
+                  <p className="mt-1 text-tinta-media">
+                    É o que o Instagram faz quando o painel demora a responder: ele
+                    cancela o envio e não avisa em tela nenhuma. O painel assinou de
+                    novo ao abrir esta tela e os avisos voltam daqui pra frente — o
+                    que chegou enquanto estava cancelado não volta. Se isso se
+                    repetir, conte para quem cuida da sua instalação.
+                  </p>
+                </div>
+              )}
               {/*
                 Estar na lista da conta não é garantia de entrega: quem entrega
                 é o aplicativo, e ele tem a própria lista de campos assinados.
