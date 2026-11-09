@@ -14,6 +14,7 @@ import { assinaturaDoAplicativo, camposQueFaltam, garantirInscricao } from '@/li
 import { hostDoDialeto } from '@/lib/meta/dialeto';
 import { getFirstAccount } from '@/lib/repo/accounts';
 import { NOME_DO_CAMPO } from '@/lib/painel/campos-do-webhook';
+import { requirePanelSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,19 @@ export default async function LogsPage({
 }: {
   searchParams: Promise<{ pessoa?: string | string[] }>;
 }) {
+  /*
+   * A sessão se confere aqui, e não só no layout.
+   *
+   * O layout do painel já chama isto, mas a doc desta versão avisa que
+   * checagem em layout não vale como tranca: layout não re-renderiza a cada
+   * navegação, e layout e página renderizam juntos — "do the checks close to
+   * your data source", em 01-app/02-guides/authentication.md. Enquanto esta
+   * tela só lia, o pior caso era mostrar. Agora ela também assina de novo na
+   * Meta, e efeito não pode depender de quem renderizou primeiro. As telas de
+   * Atendimento já fazem assim.
+   */
+  await requirePanelSession();
+
   const params = await searchParams;
   const valor = Array.isArray(params.pessoa) ? params.pessoa[0] : params.pessoa;
   const busca = normalizarBuscaPessoa(valor);

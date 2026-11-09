@@ -1,4 +1,4 @@
 {
-  "versao": "2026-11-07T01:40",
-  "novidades": "O painel religa o Instagram sozinho. Quando o Instagram cancela o envio de avisos para uma instalacao, nada aparece em tela: o painel simplesmente para de receber comentario e mensagem, e so voltava reconectando a conta a mao. Agora o painel confere isso todo dia, e tambem na hora em que voce abre a tela de Logs, e assina de novo quando precisa. Se tiver acontecido com voce, a tela de Logs diz o que estava cortado e que ja esta religado."
+  "versao": "2026-11-09T10:33",
+  "novidades": "Quando a Meta cancela a inscricao do seu aplicativo - o que fazia as automacoes pararem sem aviso nenhum -, o painel percebe e religa sozinho, e a tela de Logs conta o que aconteceu em palavras. Quem nao tem permissao para religar passa a ler o motivo, em vez de uma tentativa silenciosa. So para quem tem o Radar com IA: na Base de conhecimento da para subir um PDF ou um Word que voce ja tem, e o painel monta as fontes sozinho; e o rascunho da IA, que voltava recusado ou em branco nas conversas abertas por automacao, funciona de novo."
 }
