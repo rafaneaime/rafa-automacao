@@ -134,6 +134,56 @@ export const FERRAMENTAS: DefinicaoDeFerramenta[] = [
     },
   },
   {
+    name: 'editar_automacao',
+    title: 'Editar automação',
+    escopo: 'escrita',
+    description:
+      'Muda uma automação que já existe: o texto da DM, os botões, o comentário público, ' +
+      'o nome, as palavras-chave. Só o que você mandar muda, e o resto fica como está — ' +
+      'o gatilho, o post, a mensagem de quem não segue e as continuações continuam as ' +
+      'mesmas. Editar não publica e não pausa: se ela já estiver no ar, o texto novo vale ' +
+      'para a próxima pessoa que escrever, então MOSTRE o texto e espere a pessoa ' +
+      'confirmar antes de chamar. Para tirar o botão, mande botoes como lista vazia. ' +
+      'O id vem de listar_automacoes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        automacaoId: { type: 'integer', minimum: 1, description: 'Id da automação.' },
+        nome: { type: 'string', description: 'Nome exibido no painel.' },
+        palavrasChave: { type: 'array', items: { type: 'string' } },
+        modoDeCasamento: { type: 'string', enum: ['contains', 'exact', 'any'] },
+        respostaPublica: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Variações do comentário público, uma por item.',
+        },
+        dm: {
+          type: 'array',
+          minItems: 1,
+          items: { type: 'string' },
+          description: 'Variações da DM, uma por item.',
+        },
+        botoes: {
+          type: 'array',
+          maxItems: 3,
+          description:
+            'Botões que vão junto da DM. Lista vazia tira o botão; ausente deixa como está.',
+          items: {
+            type: 'object',
+            properties: {
+              titulo: { type: 'string', description: 'Até 20 caracteres.' },
+              link: { type: 'string', description: 'Começa com http:// ou https://.' },
+            },
+            required: ['titulo', 'link'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['automacaoId'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'publicar_automacao',
     title: 'Publicar automação',
     escopo: 'escrita',

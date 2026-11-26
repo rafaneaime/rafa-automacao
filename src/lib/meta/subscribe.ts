@@ -1,4 +1,4 @@
-import { GRAPH_BASE, GRAPH_UNIFICADO, GRAPH_VERSION, metaGet, metaPost } from './client';
+import { GRAPH_BASE, GRAPH_UNIFICADO, GRAPH_VERSION, MetaApiError, metaGet, metaPost } from './client';
 
 /*
  * `live_comments` entrou em 06/10/2026: comentário em transmissão ao vivo chega
@@ -29,25 +29,99 @@ export function subscribeApp(accountIgId: string, token: string, host = GRAPH_BA
  * Em outubro de 2026 essa diferença custou dias numa instalação. A resposta
  * estava a uma pergunta de distância — esta.
  */
+export type AplicativoInscrito = {
+  /** A identificação do aplicativo, quando a Meta a manda. */
+  appId: string | null;
+  nome: string | null;
+  campos: string[];
+};
+
+/**
+ * QUAIS aplicativos recebem os avisos desta conta, e não só quais avisos.
+ *
+ * A diferença custou quatorze dias numa instalação em novembro de 2026. A
+ * resposta da Meta é uma lista de aplicativos, e a gente somava os campos de
+ * todos eles sem olhar de quem eram. Com isso, "não falta aviso nenhum" era a
+ * resposta tanto para a conta inscrita no aplicativo DESTE painel quanto para a
+ * conta inscrita em OUTRO aplicativo da pessoa — e no segundo caso a Meta
+ * entrega os avisos no endereço do outro, a tela de Eventos recebidos fica
+ * vazia para sempre, e nada em tela nenhuma diz isso.
+ *
+ * Acontece de verdade: quem passa dias tentando acaba com mais de um
+ * aplicativo, e o token colado no painel pode ter saído de um enquanto a
+ * identificação e a chave secreta saíram de outro. Aí as duas metades do
+ * diagnóstico respondem certo, cada uma sobre um aplicativo diferente.
+ *
+ * `appId` vem `null` quando a Meta responde sem a identificação. Nesse caso
+ * ninguém afirma nada: a soma dos campos continua valendo, e a tela não acusa
+ * aplicativo estranho com base em ausência de dado.
+ */
+export async function aplicativosInscritos(
+  accountIgId: string,
+  token: string,
+  host = GRAPH_BASE,
+): Promise<AplicativoInscrito[]> {
+  const caminho = `/${GRAPH_VERSION}/${accountIgId}/subscribed_apps`;
+  /*
+   * Pede a identificação junto. Se esta versão da Meta não aceitar o campo, a
+   * pergunta antiga é refeita: diagnóstico novo não pode cegar o que já
+   * funciona.
+   */
+  let bruto: unknown;
+  try {
+    bruto = await metaGet(caminho, { fields: 'id,name,subscribed_fields', access_token: token }, host);
+  } catch (erro) {
+    /*
+     * Refaz só quando a Meta RECUSOU o pedido (400), que é como ela responde a
+     * campo que não conhece. Rede fora e token vencido não ganham segunda
+     * tentativa: seria dobrar o custo de toda falha para cobrir um caso que não
+     * é esse.
+     */
+    if (!(erro instanceof MetaApiError) || erro.status !== 400) throw erro;
+    bruto = await metaGet(caminho, { fields: 'subscribed_fields', access_token: token }, host);
+  }
+
+  const dados = (bruto as { data?: unknown })?.data;
+  if (!Array.isArray(dados)) return [];
+  return dados.map((item) => {
+    const app = item as { id?: unknown; name?: unknown; subscribed_fields?: unknown };
+    const campos = Array.isArray(app.subscribed_fields)
+      ? app.subscribed_fields.filter((c): c is string => typeof c === 'string')
+      : [];
+    return {
+      appId: typeof app.id === 'string' && app.id.trim() !== '' ? app.id : null,
+      nome: typeof app.name === 'string' && app.name.trim() !== '' ? app.name : null,
+      campos,
+    };
+  });
+}
+
+/**
+ * Os aplicativos que recebem os avisos desta conta e NÃO são o deste painel.
+ *
+ * Vazio é a resposta boa, e é também a resposta quando não se sabe: sem a
+ * identificação do nosso aplicativo no ambiente, ou sem a identificação na
+ * resposta da Meta, ninguém acusa ninguém.
+ */
+export function aplicativosEstranhos(
+  inscritos: readonly AplicativoInscrito[],
+  nosso: string,
+): AplicativoInscrito[] {
+  const nossoId = nosso.trim();
+  if (nossoId === '') return [];
+  const identificados = inscritos.filter((app) => app.appId !== null);
+  if (identificados.length === 0) return [];
+  if (identificados.some((app) => app.appId === nossoId)) return [];
+  return identificados;
+}
+
 export async function camposInscritos(
   accountIgId: string,
   token: string,
   host = GRAPH_BASE,
 ): Promise<string[]> {
-  const bruto = await metaGet(`/${GRAPH_VERSION}/${accountIgId}/subscribed_apps`, {
-    fields: 'subscribed_fields',
-    access_token: token,
-  }, host);
-  const dados = (bruto as { data?: unknown })?.data;
-  if (!Array.isArray(dados)) return [];
-  return [
-    ...new Set(
-      dados.flatMap((app) => {
-        const campos = (app as { subscribed_fields?: unknown })?.subscribed_fields;
-        return Array.isArray(campos) ? campos.filter((c): c is string => typeof c === 'string') : [];
-      }),
-    ),
-  ];
+  const apps = await aplicativosInscritos(accountIgId, token, host);
+  return [...new Set(apps.flatMap((app) => app.campos))];
 }
 
 /** Os campos pedidos que não voltaram. Vazio é a resposta boa. */
@@ -61,6 +135,12 @@ export type Reinscricao = {
   campos: string[];
   /** O que faltava quando a conferência começou. É isto que diz que houve corte. */
   faltavam: string[];
+  /**
+   * Para QUEM a conta manda esses avisos. Vem junto porque a resposta da Meta
+   * já traz isso, e quem lê esta conferência é exatamente quem precisa saber
+   * que os avisos podem estar indo para outro aplicativo.
+   */
+  aplicativos: AplicativoInscrito[];
 };
 
 /**
@@ -97,32 +177,45 @@ export async function garantirInscricao(
   token: string,
   host = GRAPH_BASE,
 ): Promise<Reinscricao> {
-  let campos: string[];
+  let aplicativos: AplicativoInscrito[];
   try {
-    campos = await camposInscritos(accountIgId, token, host);
+    aplicativos = await aplicativosInscritos(accountIgId, token, host);
   } catch {
-    return { estado: 'sem-resposta', campos: [], faltavam: [] };
+    return { estado: 'sem-resposta', campos: [], faltavam: [], aplicativos: [] };
   }
+  const campos = [...new Set(aplicativos.flatMap((app) => app.campos))];
 
   const faltavam = camposQueFaltam(campos);
-  if (faltavam.length === 0) return { estado: 'em-ordem', campos, faltavam: [] };
+  if (faltavam.length === 0) return { estado: 'em-ordem', campos, faltavam: [], aplicativos };
 
   try {
     await subscribeApp(accountIgId, token, host);
-    const agora = await camposInscritos(accountIgId, token, host);
+    const depois = await aplicativosInscritos(accountIgId, token, host);
+    const agora = [...new Set(depois.flatMap((app) => app.campos))];
     return {
       estado: camposQueFaltam(agora).length === 0 ? 'reassinada' : 'nao-resolveu',
       campos: agora,
       faltavam,
+      aplicativos: depois,
     };
   } catch {
-    return { estado: 'nao-resolveu', campos, faltavam };
+    return { estado: 'nao-resolveu', campos, faltavam, aplicativos };
   }
 }
 
 export type AssinaturaDoAplicativo = {
   callbackUrl: string | null;
-  ativa: boolean;
+  /**
+   * Se a Meta diz que a inscrição está LIGADA. `null` é "ela não disse".
+   *
+   * Eram dois valores, e `instagram.active === true` jogava o "não disse" no
+   * mesmo balde do "está desligada". Quem lê isto escreve na tela da pessoa
+   * que a inscrição dela está desativada — e dizer isso para uma instalação
+   * que está boa, porque a Meta mudou o formato da resposta ou deixou o campo
+   * de fora, manda a pessoa mexer no portal para consertar o que não está
+   * quebrado. Ausência não é negação, e por isso ela tem valor próprio.
+   */
+  ativa: boolean | null;
   campos: string[];
 };
 
@@ -200,7 +293,7 @@ export async function assinaturaDoAplicativo(
     estado: 'ok',
     assinatura: {
       callbackUrl: typeof instagram.callback_url === 'string' ? instagram.callback_url : null,
-      ativa: instagram.active === true,
+      ativa: typeof instagram.active === 'boolean' ? instagram.active : null,
       campos,
     },
   };

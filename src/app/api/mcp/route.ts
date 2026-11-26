@@ -14,7 +14,7 @@ import {
 } from '@/lib/mcp/protocolo';
 import { acharFerramenta, ferramentasParaEscopos, limiteDaFerramenta } from '@/lib/mcp/ferramentas';
 import { executar } from '@/lib/mcp/executar';
-import { validarCriacaoDeAutomacao } from '@/lib/mcp/criacao';
+import { validarCriacaoDeAutomacao, validarEdicaoDeAutomacao } from '@/lib/mcp/criacao';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -142,6 +142,12 @@ export async function POST(request: Request) {
   if (criacao && !criacao.ok) {
     return json(erro(requisicao.id, CODIGO.parametroInvalido, criacao.erro));
   }
+  // Mesma porta da criação: entrada torta volta como parâmetro inválido, com o
+  // motivo em português, e não como exceção genérica no meio da execução.
+  const edicao = ferramenta.name === 'editar_automacao' ? validarEdicaoDeAutomacao(args) : null;
+  if (edicao && !edicao.ok) {
+    return json(erro(requisicao.id, CODIGO.parametroInvalido, edicao.erro));
+  }
   const limite = limiteDaFerramenta(args.limite);
 
   try {
@@ -151,6 +157,7 @@ export async function POST(request: Request) {
       args,
       limite,
       criacao: criacao?.ok ? criacao.dados : undefined,
+      edicao: edicao?.ok ? edicao.dados : undefined,
     });
     return json(
       resposta(requisicao.id, {

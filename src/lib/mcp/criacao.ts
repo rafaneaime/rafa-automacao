@@ -22,6 +22,28 @@ export type DadosDeCriacao = {
   botoes: BotaoDaDm[];
 };
 
+/**
+ * O que muda numa automacao que ja existe.
+ *
+ * Campo ausente quer dizer "nao mexa", e e por isso que tudo aqui e opcional:
+ * trocar o texto da DM nao pode apagar as palavras-chave que ninguem mencionou.
+ * Lista vazia em `botoes` e a forma de tirar o botao, e isso e diferente de
+ * ausente de proposito.
+ */
+export type DadosDeEdicao = {
+  automacaoId: number;
+  nome?: string;
+  palavrasChave?: string[];
+  modoDeCasamento?: MatchMode;
+  respostaPublica?: string[];
+  dm?: string[];
+  botoes?: BotaoDaDm[];
+};
+
+export type ResultadoDaEdicao =
+  | { ok: true; dados: DadosDeEdicao }
+  | { ok: false; erro: string };
+
 export type ResultadoDaCriacao =
   | { ok: true; dados: DadosDeCriacao }
   | { ok: false; erro: string };
@@ -71,6 +93,73 @@ function listaDeBotoes(valor: unknown): BotaoDaDm[] | string {
     botoes.push({ titulo, link });
   }
   return botoes;
+}
+
+export function validarEdicaoDeAutomacao(entrada: unknown): ResultadoDaEdicao {
+  const dados = objeto(entrada);
+  if (!dados) return { ok: false, erro: 'A entrada deve ser um objeto.' };
+
+  const id = dados.automacaoId;
+  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 1) {
+    return { ok: false, erro: 'automacaoId deve ser o id da automação, que vem de listar_automacoes.' };
+  }
+
+  const edicao: DadosDeEdicao = { automacaoId: id };
+
+  if (dados.nome !== undefined) {
+    if (typeof dados.nome !== 'string' || dados.nome.trim().length === 0) {
+      return { ok: false, erro: 'nome não pode ficar vazio.' };
+    }
+    edicao.nome = dados.nome.trim();
+  }
+
+  if (dados.dm !== undefined) {
+    const dm = listaDeTextos(comoLista(dados.dm), 'dm');
+    if (typeof dm === 'string') return { ok: false, erro: dm };
+    /*
+     * DM vazia e automacao sem texto: ela continuaria no ar, aparecendo ativa, e
+     * nao entregaria nada. Quem quer parar de responder pausa a automacao.
+     */
+    if (dm.length === 0) return { ok: false, erro: 'dm precisa ter ao menos uma variação; para parar de responder, pause a automação.' };
+    edicao.dm = dm;
+  }
+
+  if (dados.botoes !== undefined) {
+    const botoes = listaDeBotoes(comoLista(dados.botoes));
+    if (typeof botoes === 'string') return { ok: false, erro: botoes };
+    edicao.botoes = botoes;
+  }
+
+  if (dados.respostaPublica !== undefined) {
+    const resposta = listaDeTextos(comoLista(dados.respostaPublica), 'respostaPublica');
+    if (typeof resposta === 'string') return { ok: false, erro: resposta };
+    edicao.respostaPublica = resposta;
+  }
+
+  if (dados.palavrasChave !== undefined) {
+    const palavras = listaDeTextos(comoLista(dados.palavrasChave), 'palavrasChave');
+    if (typeof palavras === 'string') return { ok: false, erro: palavras };
+    edicao.palavrasChave = [...new Set(palavras)];
+  }
+
+  if (dados.modoDeCasamento !== undefined) {
+    const modo = dados.modoDeCasamento;
+    if (modo !== 'contains' && modo !== 'exact' && modo !== 'any') {
+      return { ok: false, erro: 'modoDeCasamento inválido.' };
+    }
+    edicao.modoDeCasamento = modo;
+  }
+
+  /*
+   * Edicao sem nada para mudar grava a automacao por cima dela mesma e responde
+   * "pronto". Quem pediu fica achando que mudou algo, e o que mudou foi so a
+   * data. Recusar aqui diz onde esta o engano.
+   */
+  if (Object.keys(edicao).length === 1) {
+    return { ok: false, erro: 'diga o que mudar: dm, botoes, respostaPublica, nome, palavrasChave ou modoDeCasamento.' };
+  }
+
+  return { ok: true, dados: edicao };
 }
 
 export function validarCriacaoDeAutomacao(entrada: unknown): ResultadoDaCriacao {

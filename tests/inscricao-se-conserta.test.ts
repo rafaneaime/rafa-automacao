@@ -124,16 +124,22 @@ describe('o painel confere a inscrição e religa sozinho', () => {
 
   // Remendo que derruba a tela de Logs é pior do que remendo nenhum: é a tela
   // onde se vai quando já está tudo errado.
-  it('rede fora: devolve resposta em vez de quebrar a tela', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => {
+  it('rede fora: devolve resposta em vez de quebrar a tela, e pergunta uma vez só', async () => {
+    const buscar = vi.fn(async () => {
       throw new Error('fetch failed');
-    }));
+    });
+    vi.stubGlobal('fetch', buscar);
 
     await expect(garantirInscricao('1784', 'IGAAtoken')).resolves.toEqual({
       estado: 'sem-resposta',
       campos: [],
       faltavam: [],
+      aplicativos: [],
     });
+    // Rede fora não ganha segunda tentativa: dobrar o custo de toda falha para
+    // cobrir o caso de campo recusado sairia caro na tela que mais se abre
+    // quando algo já está errado.
+    expect(buscar).toHaveBeenCalledTimes(1);
   });
 
   it('respeita o endereço da conta, que no login unificado é outro', async () => {

@@ -30,6 +30,19 @@ export const AVISO_SEM_CONFIRMAR =
   'Não consegui confirmar aqui se você já está me seguindo, mas não vou te ' +
   'deixar esperando:';
 
+/**
+ * O motivo gravado quando o aviso chegou para uma conta que não está aqui.
+ *
+ * Constante, e não a frase solta nos dois lugares que a escrevem, porque uma
+ * TERCEIRA parte do sistema agora RECONHECE este motivo: a tela de Logs, para
+ * dizer qual identificador de conta chegou e qual é o que está guardado. Com a
+ * frase repetida, o dia em que alguém melhorar a redação é o dia em que a tela
+ * volta a calar — e calada foi como ela passou catorze dias numa instalação de
+ * verdade, em 24/11/2026, com a dona olhando "ignorado: conta não conectada"
+ * sem ter como saber de qual conta o aviso era.
+ */
+export const CONTA_NAO_CONECTADA = 'conta não conectada';
+
 
 export type ProcessDeps = {
   runConversation?(event: NormalizedEvent, run: () => Promise<ProcessResult>): Promise<ProcessResult>;
@@ -306,7 +319,7 @@ async function runGuards(
 
   const account = await deps.findAccount(opts.accountIgId);
   if (!account) {
-    return { ok: false, result: { outcome: 'ignored', reason: 'conta não conectada' } };
+    return { ok: false, result: { outcome: 'ignored', reason: CONTA_NAO_CONECTADA } };
   }
 
   let automation: Automation | undefined;
@@ -597,7 +610,7 @@ async function processMessage(
   }
 
   const account = await deps.findAccount(event.accountIgId);
-  if (!account) return { outcome: 'ignored', reason: 'conta não conectada' };
+  if (!account) return { outcome: 'ignored', reason: CONTA_NAO_CONECTADA };
 
   // Depois do anti-loop, para o próprio eco não ocupar uma reserva. Sem `mid`
   // (payload antigo ou malformado) segue sem a proteção, que é o

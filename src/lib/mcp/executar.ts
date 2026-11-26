@@ -22,7 +22,8 @@ import {
   saveAutomation,
 } from '../repo/automations';
 import { registrarAcaoDeAgente } from '../repo/agent-actions';
-import type { DadosDeCriacao } from './criacao';
+import type { DadosDeCriacao, DadosDeEdicao } from './criacao';
+import { botoesDoBanco, montarEdicao } from './edicao';
 
 export type ContextoDaExecucao = {
   conta: number;
@@ -30,6 +31,7 @@ export type ContextoDaExecucao = {
   args: Record<string, unknown>;
   limite: number;
   criacao?: DadosDeCriacao;
+  edicao?: DadosDeEdicao;
 };
 
 async function auditar(
@@ -69,7 +71,7 @@ export async function criarAutomacao(
         position: 1,
         kind: 'dm',
         variants: criacao.dm,
-        buttons: criacao.botoes.map((botao) => ({ title: botao.titulo, url: botao.link })),
+        buttons: botoesDoBanco(criacao.botoes),
       },
     ],
   );
@@ -193,10 +195,48 @@ export async function pausarAutomacao({ conta, chaveId, args }: ContextoDaExecuc
   };
 }
 
+/**
+ * Muda o que ja existe, em vez de criar outra e pausar a antiga.
+ *
+ * Criar nova e pausar perde o que a tela configurou e deixa duas automacoes com
+ * a mesma palavra-chave no caminho de quem comentar. O que vai para o banco sai
+ * de `montarEdicao`, que preserva campo e passo que ninguem mandou mudar.
+ *
+ * A resposta devolve o texto e os botoes gravados pelo mesmo motivo de
+ * `publicarAutomacao`: numa automacao no ar, isto e o que a proxima pessoa vai
+ * receber, e quem pediu precisa poder conferir o que acabou de autorizar.
+ */
+export async function editarAutomacao({ conta, chaveId, edicao }: ContextoDaExecucao): Promise<unknown> {
+  if (!edicao) throw new Error('dados da edição ausentes');
+
+  const automacao = await getAutomation(edicao.automacaoId);
+  if (!automacao || automacao.accountId !== conta) throw new Error('automação não encontrada');
+
+  const { fields, passos, mudou } = montarEdicao(automacao, edicao);
+  await saveAutomation(edicao.automacaoId, fields, passos);
+  await auditar(conta, chaveId, 'editar_automacao', edicao.automacaoId, { nome: fields.name, mudou });
+
+  const dm = passos.find((passo) => passo.kind === 'dm');
+  const noAr = fields.status === 'published';
+  return {
+    id: edicao.automacaoId,
+    nome: fields.name,
+    publicada: noAr,
+    mudou,
+    palavrasChave: fields.keywords,
+    dm: dm?.variants ?? [],
+    botoes: dm?.buttons ?? [],
+    mensagem: noAr
+      ? 'No ar com o texto novo: a próxima pessoa que usar a palavra-chave já recebe isto.'
+      : 'Rascunho atualizado. Ninguém recebe nada até alguém publicar.',
+  };
+}
+
 export async function executar(nome: string, contexto: ContextoDaExecucao): Promise<unknown> {
   const { conta, args, limite } = contexto;
 
   if (nome === 'criar_automacao') return criarAutomacao(contexto, comoBooleano(args.publicar));
+  if (nome === 'editar_automacao') return editarAutomacao(contexto);
   if (nome === 'publicar_automacao') return publicarAutomacao(contexto);
   if (nome === 'pausar_automacao') return pausarAutomacao(contexto);
 

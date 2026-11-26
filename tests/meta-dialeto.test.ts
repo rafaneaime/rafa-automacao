@@ -188,6 +188,34 @@ describe('o que o aplicativo está assinado para receber', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('400 com a requisição dentro')));
     expect(await assinaturaDoAplicativo('123', 'segredo')).toEqual({ estado: 'nao-perguntei' });
   });
+
+  /*
+   * Inscrição desligada e inscrição sem resposta sobre isso são DUAS coisas, e
+   * ficavam na mesma: `active === true` jogava as duas em `false`. Quem lê este
+   * valor escreve na tela que a inscrição da pessoa está desativada, e dizer
+   * isso para uma instalação boa, só porque a Meta deixou o campo de fora,
+   * manda ela mexer no portal para consertar o que não está quebrado.
+   */
+  it('inscrição desligada é false; a Meta calada é null, e não false', async () => {
+    const comActive = (active: unknown) => responder({
+      '/subscriptions': {
+        data: [{
+          object: 'instagram',
+          callback_url: 'https://painel.exemplo/api/webhook',
+          ...(active === undefined ? {} : { active }),
+          fields: [{ name: 'comments' }],
+        }],
+      },
+    });
+
+    vi.stubGlobal('fetch', comActive(false));
+    const desligada = await assinaturaDoAplicativo('123', 'segredo');
+    expect(desligada.estado === 'ok' && desligada.assinatura.ativa).toBe(false);
+
+    vi.stubGlobal('fetch', comActive(undefined));
+    const calada = await assinaturaDoAplicativo('123', 'segredo');
+    expect(calada.estado === 'ok' && calada.assinatura.ativa).toBe(null);
+  });
 });
 
 /*

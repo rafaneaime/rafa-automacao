@@ -10,7 +10,9 @@ import { diagnosticarPessoa } from '@/lib/repo/diagnostico';
 import { listDeliveries } from '@/lib/repo/deliveries';
 import { listRecentEvents, recebimentoPorTipo } from '@/lib/repo/webhook-events';
 import { resumirEntrega } from '@/lib/painel/resumo-da-entrega';
+import { contaDoAviso } from '@/lib/painel/conta-do-aviso';
 import {
+  aplicativosEstranhos,
   assinaturaDoAplicativo,
   camposQueFaltam,
   garantirInscricao,
@@ -103,9 +105,27 @@ export default async function LogsPage({
       campos: conferida.campos,
       reassinada: conferida.estado === 'reassinada',
       faltavam: conferida.faltavam,
+      aplicativos: conferida.aplicativos,
     };
   })();
   const faltando = inscricao.ok ? camposQueFaltam(inscricao.campos) : [];
+
+  /*
+   * Os avisos desta conta estão indo para outro aplicativo?
+   *
+   * A pergunta que faltava. As duas metades acima podem responder certo cada
+   * uma sobre um aplicativo diferente: a conta inscrita no aplicativo A, e a
+   * identificação e a chave secreta deste painel do aplicativo B. Aí a Meta
+   * entrega no endereço de A, aqui não chega nada, e tudo parece pronto. Foi o
+   * que custou quatorze dias de uma instalação em novembro de 2026.
+   *
+   * Silêncio quando não se sabe: sem identificação no ambiente ou na resposta
+   * da Meta, `aplicativosEstranhos` devolve lista vazia e esta tela não diz
+   * nada. Acusar por falta de dado manda consertar o que não está quebrado.
+   */
+  const estranhos = inscricao.ok
+    ? aplicativosEstranhos(inscricao.aplicativos, process.env.IG_APP_ID ?? '')
+    : [];
 
   /*
    * A outra metade da mesma pergunta, e a que ninguém fazia.
@@ -241,6 +261,28 @@ export default async function LogsPage({
                 também não — o Instagram não avisa quando o dono comenta no
                 próprio post.
               </span>
+              <br />
+              {/*
+                Por qual porta da Meta esta conta fala, dito na tela.
+                O painel guarda isso por conta desde que o login unificado
+                apareceu, e nenhuma tela mostrava. Em novembro de 2026 três
+                instalações passaram dias em investigação sem que ninguém
+                soubesse em qual das duas configurações elas estavam — e a
+                resposta estava gravada no banco o tempo todo. Aqui é fato, e
+                só fato: o que cada configuração entrega ainda está sendo
+                medido, e frase que afirma o que não foi medido defende o
+                defeito no dia em que a medida contrariar.
+              */}
+              <span className="text-tinta-media">
+                Esta conta fala com a Meta pela configuração de{' '}
+                <strong>
+                  {conta.dialeto === 'unificado'
+                    ? 'login unificado'
+                    : 'login do Instagram'}
+                </strong>
+                . Quando um aviso não chega, é a primeira coisa que o suporte
+                precisa saber.
+              </span>
             </p>
           )}
           {mensagemNuncaChega && (
@@ -267,6 +309,27 @@ export default async function LogsPage({
             </p>
           ) : (
             <>
+              {estranhos.length > 0 && (
+                <div className="mb-3 rounded-lg bg-caindo-tenue px-4 py-3 text-sm">
+                  <p className="font-medium text-caindo-forte">
+                    Os avisos desta conta vão para outro aplicativo.
+                  </p>
+                  <p className="mt-1 text-tinta-media">
+                    A conta pediu os avisos, e quem os recebe é{' '}
+                    {estranhos
+                      .map((app) => app.nome ?? `o aplicativo ${app.appId}`)
+                      .join(', ')}
+                    . O aplicativo deste painel é outro:{' '}
+                    <span className="numero">{process.env.IG_APP_ID}</span>.
+                    Enquanto forem dois, nada chega aqui, por mais que as telas da
+                    Meta estejam todas certas. Para igualar, abra Configuração e
+                    conecte a conta de novo com o token gerado no aplicativo deste
+                    painel; se o token estiver certo e o painel errado, a
+                    identificação e a chave secreta na Vercel precisam sair{' '}
+                    <strong>as duas do mesmo aplicativo</strong>.
+                  </p>
+                </div>
+              )}
               <ul className="flex flex-wrap gap-2">
                 {inscricao.campos.length === 0 ? (
                   <li className="text-sm">Nenhum. Nenhum evento vai chegar aqui.</li>
@@ -328,6 +391,41 @@ export default async function LogsPage({
                   Meta: conta inscrita e aplicativo sem campo marcado dá silêncio aqui
                   embaixo, com tudo parecendo certo em cima.
                 </p>
+              ) : leitura.estado === 'ok' && leitura.assinatura.ativa === false ? (
+                <div className="mt-4 text-sm">
+                  {/*
+                    A inscrição pode estar DESATIVADA com todos os campos no lugar,
+                    e até 25/11/2026 esta tela não perguntava isso.
+
+                    O valor vinha da Meta desde sempre, em `assinatura.ativa`: era
+                    lido, guardado num tipo e jogado fora — nenhum consumidor no
+                    código inteiro. Sem ele, o último ramo escrevia "está assinado
+                    em todos os avisos" para quem não recebe nada. É a pior linha
+                    possível, porque encerra a investigação de quem a lê: foi o que
+                    aconteceu numa instalação de verdade em 24 e 25/11/2026, onde
+                    esta tela foi usada como prova de que esta metade estava boa.
+
+                    Vem ANTES do campo que falta de propósito. Com a inscrição
+                    desativada, marcar campo no portal não faz chegar nada, e
+                    mandar marcar seria mandar a pessoa trabalhar à toa.
+
+                    E é `=== false`, não `!ativa`: quando a Meta não diz se a
+                    inscrição está ligada, o valor é `null`, e acusar nesse caso
+                    mandaria consertar no portal uma instalação que está boa.
+                    Calar quando não se sabe é o certo aqui, porque o preço dos
+                    dois erros não é o mesmo.
+                  */}
+                  <p className="font-medium">
+                    A inscrição do aplicativo está <strong>desativada</strong> na Meta.
+                  </p>
+                  <p className="mt-1 text-tinta-media">
+                    Enquanto ela estiver assim, nenhum aviso chega aqui, nem com os
+                    campos todos assinados, nem com a conta pedindo todos eles. No
+                    portal da Meta, em Webhooks → Instagram, a inscrição precisa voltar
+                    a ficar ativa. Se não houver como fazer isso por aí, conte para
+                    quem cuida da sua instalação.
+                  </p>
+                </div>
               ) : faltandoNoApp.length > 0 ? (
                 <div className="mt-4 text-sm">
                   <p className="font-medium">
@@ -374,19 +472,72 @@ export default async function LogsPage({
 
       <Secao titulo="Eventos recebidos" descricao="Tudo que o Meta entregou. Se estiver vazio, confira o webhook no portal.">
         {webhooksRecentes.length === 0 ? <Vazio>Nenhum evento recebido ainda.</Vazio> : (
-          <div className="grid gap-3">{webhooksRecentes.map((evento) => (
-            <Cartao key={evento.id} className="flex flex-wrap items-center gap-2 p-3">
-              <span className="text-sm">{dataPtBr(evento.receivedAt)}</span>
-              {/*
-                O resumo é o que faltava: a lista dizia só o horário, e "chegou
-                alguma coisa" não ajuda ninguém a entender por que a automação
-                não disparou.
-              */}
-              <span className="text-sm text-tinta-media">{resumirEntrega(evento.raw)}</span>
-              {!evento.signatureValid && <Chip cor="bg-caindo-tenue text-caindo-forte">Assinatura inválida</Chip>}
-              {evento.error && <span className="break-all font-mono text-xs">{evento.error}</span>}
-            </Cartao>
-          ))}</div>
+          <div className="grid gap-3">{webhooksRecentes.map((evento) => {
+            /*
+              De qual conta era o aviso que o painel recusou.
+
+              "ignorado: conta não conectada" é verdade e não conclui nada: quem
+              lê não sabe se o aviso era de outra conta ou da dela com o
+              identificador trocado. O dado está no payload guardado, e a função
+              cala quando não dá para afirmar.
+            */
+            const deQuemEra = contaDoAviso(evento, conta?.igUserId);
+            return (
+              <Cartao key={evento.id} className="flex flex-wrap items-center gap-2 p-3">
+                <span className="text-sm">{dataPtBr(evento.receivedAt)}</span>
+                {/*
+                  O resumo é o que faltava: a lista dizia só o horário, e "chegou
+                  alguma coisa" não ajuda ninguém a entender por que a automação
+                  não disparou.
+                */}
+                <span className="text-sm text-tinta-media">{resumirEntrega(evento.raw)}</span>
+                {!evento.signatureValid && <Chip cor="bg-caindo-tenue text-caindo-forte">Assinatura inválida</Chip>}
+                {evento.error && <span className="break-all font-mono text-xs">{evento.error}</span>}
+                {deQuemEra && (
+                  <p className="basis-full text-sm">
+                    {deQuemEra.tipo === 'teste-do-portal' ? (
+                      <>
+                        {/*
+                          O aviso de exemplo do portal vem com a conta 0. Até
+                          25/11/2026 esta linha o tratava como conta de verdade e
+                          mandava reconectar: duas instalações novas geraram token
+                          atrás de um problema que não existia.
+
+                          O que ela diz agora é o que o teste prova e o que ele
+                          NÃO prova. Para quem só tem esse aviso na lista, é a
+                          diferença entre "está tudo entregando" e "ainda não
+                          chegou aviso de verdade nenhum".
+                        */}
+                        Este é o <strong>aviso de exemplo do portal da Meta</strong>, o do botão
+                        Testar: ele vem com a conta{' '}
+                        <strong className="numero">0</strong>, que não é conta de ninguém, e por
+                        isso o painel descarta. Ele mostra que o portal alcança este endereço.
+                        Ele não mostra que aviso de conta de verdade chega: para isso, comente em
+                        uma publicação sua com outro perfil e volte aqui.
+                      </>
+                    ) : deQuemEra.tipo === 'outra-conta' ? (
+                      <>
+                        Este aviso era para a conta{' '}
+                        <strong className="numero">{deQuemEra.chegou}</strong>, e a conta conectada
+                        neste painel é{' '}
+                        <strong className="numero">{deQuemEra.conectada}</strong>. São contas
+                        diferentes: por isso ele foi descartado, e nenhuma automação dispara por
+                        avisos dessa outra conta. Se a conta de cima é a sua, abra Configuração e
+                        conecte a conta de novo, com o token dela.
+                      </>
+                    ) : (
+                      <>
+                        Este aviso era para a conta{' '}
+                        <strong className="numero">{deQuemEra.chegou}</strong>, e este painel não
+                        tem conta conectada. Abra Configuração e conecte a conta do Instagram: até
+                        lá, todo aviso que chegar vai ser descartado assim.
+                      </>
+                    )}
+                  </p>
+                )}
+              </Cartao>
+            );
+          })}</div>
         )}
       </Secao>
     </div>
