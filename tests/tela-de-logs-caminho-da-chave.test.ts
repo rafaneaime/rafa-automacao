@@ -88,8 +88,15 @@ beforeEach(() => {
   listDeliveries.mockReset().mockResolvedValue([]);
   listRecentEvents.mockReset().mockResolvedValue([]);
   diagnosticarPessoa.mockReset().mockResolvedValue(null);
-  // Comentário entrando e mensagem nenhuma: é o caso que faz o aviso aparecer.
-  recebimentoPorTipo.mockReset().mockResolvedValue({ comentarios: 12, entrada: 0 });
+  /*
+   * Comentário entrando e mensagem nenhuma: é o caso que faz o aviso
+   * aparecer. A forma é a que `recebimentoPorTipo` devolve de verdade, com os
+   * quatro contadores: mock de um formato que não existe esconde o defeito que
+   * o formato de verdade causaria.
+   */
+  recebimentoPorTipo
+    .mockReset()
+    .mockResolvedValue({ comentarios: 12, entrada: 0, cliques: 0, nossos: 0, desde: null });
 });
 
 afterEach(() => vi.unstubAllEnvs());
@@ -115,12 +122,23 @@ describe('o caminho até a chave das mensagens', () => {
   });
 
   /*
-   * Com a chave já ligada o aviso perde a função se ele parar na chave. Este
-   * caso não existia até 26/11/2026, quando apareceu a primeira instalação
-   * assim.
+   * Parar na chave é o defeito, não a cura.
+   *
+   * Em 27/11/2026 uma conta com a chave "Permitir acesso às mensagens"
+   * LIGADA e o aplicativo fora de "Ferramentas conectadas" recebia comentário,
+   * eco e confirmação de leitura, e nenhuma mensagem de ninguém. Quem seguia o
+   * conselho antigo conferia a chave, via ligada, e concluía que a causa era
+   * outra — e era essa. A chave governa a conta; a lista governa quem recebe.
+   *
+   * Esta guarda exige o passo que faltava. Ela não proíbe falar da chave: a
+   * chave desligada continua sendo causa, e proibir a frase inteira reprovaria
+   * o texto legítimo.
    */
-  it('diz o que fazer quando a chave já estiver ligada', async () => {
-    expect(await abrir()).toContain('já estiver ligada');
+  it('exige que o aplicativo apareça na lista, e não só a chave ligada', async () => {
+    const html = await abrir();
+
+    expect(html).toContain('Ferramentas conectadas');
+    expect(html).toContain('aparecer nessa lista');
   });
 
   /*
@@ -156,18 +174,76 @@ describe('o caminho até a chave das mensagens', () => {
   });
 
   /*
-   * Clique em botão é recebimento. Ele chega em `postback`, sem campo de
-   * texto, e a automação que a própria tela recomenda convida a pessoa a tocar
-   * em vez de digitar. Contando só texto, uma instalação em que todo mundo
-   * toca no botão era acusada de não receber nada, e o aviso mandava mexer
-   * numa chave do Instagram que estava ligada.
+   * Clique chegando e escrito não: o terceiro estado, e o mais delicado.
+   *
+   * Clique em botão chega em `postback`, sem campo de texto, e a automação que
+   * a própria tela recomenda convida a pessoa a tocar em vez de digitar. Numa
+   * instalação assim, "ninguém escreveu" e "o escrito não chega" produzem
+   * exatamente a mesma contagem: o painel NÃO tem como separar os dois.
+   *
+   * Por isso esta tela não pode acusar aqui, e também não pode calar. Calar
+   * foi o defeito publicado em 26/11/2026: clique cancelava o aviso inteiro, e
+   * em 27/11 uma instalação com o defeito de verdade estava muda por causa
+   * disso. O certo é contar o que viu e entregar o teste que separa.
    */
-  it('com clique em botão entrando, não acusa que nada chega', async () => {
-    recebimentoPorTipo.mockResolvedValue({ comentarios: 12, entrada: 0, cliques: 5 });
+  it('com clique entrando, conta o clique e não afirma que nada chega', async () => {
+    recebimentoPorTipo.mockResolvedValue({
+      comentarios: 12,
+      entrada: 0,
+      cliques: 5,
+      nossos: 30,
+    });
 
     const html = await abrir();
 
-    expect(html).not.toContain('Pedidos de contato');
-    expect(html).not.toContain('Permitir acesso');
+    expect(html).toContain('Chega clique em botão');
+    // A acusação do outro estado não pode vazar para este.
+    expect(html).not.toContain('nada vindo de ninguém');
+  });
+
+  it('com clique entrando, entrega o teste que separa os dois casos', async () => {
+    recebimentoPorTipo.mockResolvedValue({
+      comentarios: 12,
+      entrada: 0,
+      cliques: 5,
+      nossos: 30,
+    });
+
+    const html = await abrir();
+
+    expect(html).toContain('DM escrita agora');
+    expect(html).toContain('aparecer nessa lista');
+  });
+
+  /*
+   * Eco e confirmação de leitura chegam pelo mesmo canal da mensagem recebida.
+   * Se eles chegam e nada das pessoas chega, o canal está vivo e o que falta é
+   * autorização. Dizer isso muda o diagnóstico, então a tela precisa dizer.
+   */
+  it('quando só o eco chega, diz que o canal está vivo', async () => {
+    recebimentoPorTipo.mockResolvedValue({
+      comentarios: 12,
+      entrada: 0,
+      cliques: 0,
+      nossos: 42,
+    });
+
+    const html = await abrir();
+
+    expect(html).toContain('canal está vivo');
+  });
+
+  it('quando nem o eco chega, não afirma que o canal está vivo', async () => {
+    recebimentoPorTipo.mockResolvedValue({
+      comentarios: 12,
+      entrada: 0,
+      cliques: 0,
+      nossos: 0,
+    });
+
+    const html = await abrir();
+
+    expect(html).not.toContain('canal está vivo');
+    expect(html).toContain('Nem o eco');
   });
 });

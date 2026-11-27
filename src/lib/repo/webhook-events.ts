@@ -84,6 +84,20 @@ export async function listRecentEvents(limit = 50): Promise<WebhookEventLog[]> {
  * `"postback"` dentro dela, e contá-la seria o painel provando para si mesmo
  * que recebe o que ele próprio enviou.
  *
+ * `nossos` conta justamente o que foi excluído dali: o eco das nossas DMs e a
+ * confirmação de leitura. Sozinhos eles não provam recebimento nenhum, e é por
+ * isso que não entram nas outras contagens. Mas eles chegam pelo **mesmo canal**
+ * da mensagem recebida, e é isso que os torna úteis: se eles chegam e nada que
+ * as pessoas mandam chega, então o canal está vivo e entregando, e o que falta
+ * é autorização, não assinatura nem campo marcado.
+ *
+ * Foi o que decidiu o caso de 27/11/2026. Numa instalação real entravam
+ * comentário, eco e confirmação de leitura, e uma DM escrita na hora não
+ * apareceu. A conta tinha a chave "Permitir acesso às mensagens" ligada, e
+ * mesmo assim o aplicativo **não estava na lista de Ferramentas conectadas**.
+ * A chave ligada não basta: o Instagram entrega o que as pessoas escrevem para
+ * os aplicativos que estão naquela lista, e só para eles.
+ *
  * `desde` é o aviso mais antigo que este painel guardou dentro da janela, e
  * existe porque a contagem sozinha mente em instalação nova. Num painel ligado
  * hoje de manhã, "nenhuma mensagem em 30 dias" é uma frase sobre 30 dias que
@@ -94,7 +108,13 @@ export async function listRecentEvents(limit = 50): Promise<WebhookEventLog[]> {
  */
 export async function recebimentoPorTipo(
   dias = 30,
-): Promise<{ comentarios: number; entrada: number; cliques: number; desde: Date | null }> {
+): Promise<{
+  comentarios: number;
+  entrada: number;
+  cliques: number;
+  nossos: number;
+  desde: Date | null;
+}> {
   const rows = (await sql`
     select
       count(*) filter (where raw like '%"comments"%') as comentarios,
@@ -109,6 +129,10 @@ export async function recebimentoPorTipo(
           and raw not like '%"is_echo":true%'
           and raw like '%"postback"%'
       ) as cliques,
+      count(*) filter (
+        where raw like '%"messaging"%'
+          and (raw like '%"is_echo":true%' or raw like '%"read"%')
+      ) as nossos,
       min(received_at) as desde
     from webhook_events
     where received_at > now() - make_interval(days => ${dias})
@@ -116,6 +140,7 @@ export async function recebimentoPorTipo(
     comentarios: number | string;
     entrada: number | string;
     cliques: number | string;
+    nossos: number | string;
     desde: string | Date | null;
   }[];
 
@@ -126,6 +151,7 @@ export async function recebimentoPorTipo(
     comentarios: Number(rows[0]?.comentarios ?? 0),
     entrada: Number(rows[0]?.entrada ?? 0),
     cliques: Number(rows[0]?.cliques ?? 0),
+    nossos: Number(rows[0]?.nossos ?? 0),
     desde: desde && !Number.isNaN(desde.getTime()) ? desde : null,
   };
 }

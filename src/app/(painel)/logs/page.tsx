@@ -140,16 +140,59 @@ export default async function LogsPage({
   // Chega comentário e nunca chega mensagem: ver `recebimentoPorTipo`.
   const recebimento = await recebimentoPorTipo().catch(() => null);
   /*
-   * Clique em botão entra na conta. Ele chega em `postback`, sem campo de
+   * Três estados, não um, e eles pedem conselhos diferentes.
+   *
+   * O recorte comum é `nadaEscrito`: entra comentário e não entra uma linha
+   * escrita por ninguém. O que separa os casos é o que MAIS o canal de
+   * mensagem entregou.
+   *
+   * Clique em botão entra na conta: ele chega em `postback`, sem campo de
    * texto, e automação com botão é a forma recomendada na própria tela de
-   * automações. Numa instalação assim o recebimento inteiro pode ser clique:
-   * contar só texto acusaria o Instagram de não entregar o que ele entregou.
+   * automações. Mas clique chegando não prova que o escrito chega. Em
+   * 27/11/2026 uma instalação exatamente assim tinha o defeito, e o painel
+   * estava calado porque clique cancelava o aviso inteiro. Daqui "ninguém
+   * escreveu" e "o escrito não chega" são idênticos, então a tarja do clique
+   * não acusa: ela conta o que viu e entrega o teste que separa os dois.
    */
-  const mensagemNuncaChega = Boolean(
-    recebimento &&
-      recebimento.comentarios >= 3 &&
-      recebimento.entrada === 0 &&
-      (recebimento.cliques ?? 0) === 0,
+  const nadaEscrito = Boolean(
+    recebimento && recebimento.comentarios >= 3 && recebimento.entrada === 0,
+  );
+  const cliques = recebimento?.cliques ?? 0;
+  const soClique = nadaEscrito && cliques > 0;
+  const nadaDeNinguem = nadaEscrito && cliques === 0;
+  /*
+   * Eco e confirmação de leitura chegam pelo mesmo canal da mensagem recebida.
+   * Se eles chegam e nada das pessoas chega, o canal está vivo e o que falta é
+   * autorização, não assinatura. Ver `recebimentoPorTipo`.
+   */
+  const canalResponde = (recebimento?.nossos ?? 0) > 0;
+  /*
+   * O conselho, escrito uma vez só porque os dois estados dão o mesmo.
+   *
+   * O caminho foi lido da tela do Instagram, na ordem, em 26/11/2026, a partir
+   * do print de uma instalação de verdade. Texto que descreve a tela de outro
+   * sistema não é protegido por teste nenhum: confere-se lendo, como a pessoa
+   * lê.
+   *
+   * E ele parou de mandar "ligue a chave". Em 27/11/2026 uma conta com a chave
+   * LIGADA e o aplicativo fora da lista recebia comentário, eco e confirmação
+   * de leitura, e nenhuma mensagem de ninguém. Quem seguia o conselho antigo
+   * conferia, via ligado, e concluía que não era isso — e era. A chave governa
+   * a conta; a lista governa quem recebe.
+   */
+  const comoAutorizar = (
+    <>
+      <strong>
+        Configurações e privacidade → Mensagens e respostas a stories → Pedidos
+        de contato → Ferramentas conectadas
+      </strong>
+      . O aplicativo deste painel precisa <strong>aparecer nessa lista</strong>.
+      Ter a chave &ldquo;Permitir acesso às mensagens&rdquo; ligada não basta:
+      com ela ligada e o aplicativo fora da lista, o envio funciona, o eco e a
+      confirmação de leitura voltam, e nada que as pessoas escrevem chega. Se
+      ele não estiver lá, abra Configuração neste painel e conecte a conta de
+      novo, que é o que põe o aplicativo na lista.
+    </>
   );
   /*
    * O aviso diz em quanto tempo mediu, e não a janela da consulta. Ver
@@ -301,7 +344,7 @@ export default async function LogsPage({
               </span>
             </p>
           )}
-          {mensagemNuncaChega && (
+          {nadaDeNinguem && (
             <div className="mb-3 rounded-lg bg-caindo-tenue px-4 py-3 text-sm">
               <p className="font-medium text-caindo-forte">
                 Comentário chega aqui e mensagem não.
@@ -315,34 +358,46 @@ export default async function LogsPage({
                 */}
                 <strong>{janela}</strong> entraram {recebimento?.comentarios ?? 0}{' '}
                 comentários e nada vindo de ninguém: nem DM, nem resposta de
-                Story, nem clique em botão. A causa mais comum é uma chave
-                desligada na conta do Instagram:{' '}
+                Story, nem clique em botão.{' '}
                 {/*
-                  O caminho abaixo foi lido da tela do Instagram, na ordem, em
-                  26/11/2026, a partir do print de uma instalação de verdade.
-                  Antes dizia "Mensagens e respostas DE stories" e pulava
-                  "Pedidos de contato", que é onde "Ferramentas conectadas" mora.
-                  Quem seguiu aquele caminho chegou numa tela que não tem a
-                  chave, e concluiu que a chave não existia. Texto que descreve
-                  a tela de outro sistema não é protegido por teste nenhum: ele
-                  se confere lendo, na ordem, como a pessoa lê.
+                  Eco e leitura chegam pelo canal da mensagem. Dizer isso muda
+                  o diagnóstico de "não chega nada" para "não chega o que os
+                  outros mandam", que tem causa e conserto diferentes.
                 */}
-                <strong>Configurações e privacidade → Mensagens e respostas a
-                stories → Pedidos de contato → Ferramentas conectadas → Permitir
-                acesso às mensagens</strong>. Enquanto ela estiver desligada, o
-                envio funciona e o recebimento não, e nada mais no painel
-                denuncia isso.{' '}
+                {canalResponde
+                  ? 'O eco das DMs que saem daqui e as confirmações de leitura chegam, e eles vêm pelo mesmo canal da mensagem recebida: o canal está vivo, e o que falta é autorização.'
+                  : 'Nem o eco das DMs que saem daqui aparece, então este painel não está recebendo nada pelo canal de mensagem.'}{' '}
+                Confira em {comoAutorizar}
+              </p>
+            </div>
+          )}
+          {soClique && (
+            <div className="mb-3 rounded-lg bg-frio-tenue px-4 py-3 text-sm">
+              <p className="font-medium text-frio-forte">
+                Chega clique em botão, e mensagem escrita não.
+              </p>
+              <p className="mt-1 text-tinta-media">
+                <strong>{janela}</strong> entraram {recebimento?.comentarios ?? 0}{' '}
+                comentários e {cliques}{' '}
+                {cliques === 1 ? 'clique em botão' : 'cliques em botão'}, e
+                nenhuma mensagem escrita: nem DM, nem resposta de Story.{' '}
                 {/*
-                  Em 26/11/2026 apareceu a primeira instalação com a chave já
-                  ligada e mensagem nenhuma chegando. Então "quase sempre" não
-                  é "sempre", e a tela precisa dizer o que fazer quando não é.
-                  O que ela NÃO faz é apontar a próxima causa: nenhuma foi
-                  medida ainda, e chutar aqui mandaria a pessoa mexer no
-                  aplicativo dela atrás de um defeito que talvez não esteja lá.
+                  Esta tarja NAO acusa, de propósito. "Ninguém escreveu" e "o
+                  escrito não chega" produzem exatamente a mesma contagem, e o
+                  painel não tem como separar os dois. Afirmar qualquer um dos
+                  dois seria inventar. O que ele pode fazer é entregar o teste
+                  que separa, e é isso.
                 */}
-                Se você conferir e ela já estiver ligada, então não é isto, e
-                esta tela sozinha não diz o que é: guarde este aviso e procure o
-                suporte.
+                Pode ser que ninguém tenha escrito, e pode ser que o que as
+                pessoas escrevem não esteja chegando. Daqui, os dois são
+                idênticos.
+              </p>
+              <p className="mt-1 text-tinta-media">
+                <strong>Para saber qual é:</strong> peça a alguém para te mandar
+                uma DM escrita agora, com qualquer texto, e recarregue esta
+                tela. Se ela aparecer em Eventos recebidos, está tudo certo e
+                era só ninguém ter escrito. Se não aparecer, confira em{' '}
+                {comoAutorizar}
               </p>
             </div>
           )}
