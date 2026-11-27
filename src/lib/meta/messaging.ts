@@ -1,4 +1,4 @@
-import { GRAPH_BASE, metaPost } from './client';
+import { GRAPH_BASE, MetaApiError, metaPost } from './client';
 
 /**
  * Um botão da mensagem.
@@ -67,7 +67,44 @@ export function privateReply(
   }, {}, host, signal);
 }
 
-export function sendDm(
+/*
+ * A Meta deixa cada conversa pertencer a um aplicativo de cada vez. Quem chega
+ * vindo de outra ferramenta traz as conversas ainda no nome dela: o evento é
+ * entregue, a automação casa, e só o envio volta
+ * `(#100) A ação é inválida porque não é a dona do tópico`, subcódigo 2534037.
+ * Medido numa instalação real em 27/11/2026, com o ManyChat como dono.
+ *
+ * O protocolo de transferência existe para isso. Pedimos a posse só depois de
+ * levar essa recusa, e uma vez só: pedir antes de toda DM seria uma chamada a
+ * mais em toda resposta, e insistir não muda nada quando o pedido é negado.
+ */
+const SUBCODIGO_SEM_POSSE_DA_CONVERSA = 2534037;
+
+function semPosseDaConversa(erro: unknown): erro is MetaApiError {
+  if (!(erro instanceof MetaApiError)) return false;
+  let corpo: unknown;
+  try {
+    corpo = JSON.parse(erro.body);
+  } catch {
+    return false;
+  }
+  const subcodigo = (corpo as { error?: { error_subcode?: unknown } } | null)?.error?.error_subcode;
+  return subcodigo === SUBCODIGO_SEM_POSSE_DA_CONVERSA;
+}
+
+export function takeThreadControl(
+  accountIgId: string,
+  recipientIgId: string,
+  token: string,
+  host = GRAPH_BASE,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  return metaPost(`/${accountIgId}/take_thread_control`, token, {
+    recipient: { id: recipientIgId },
+  }, {}, host, signal);
+}
+
+export async function sendDm(
   accountIgId: string,
   recipientIgId: string,
   text: string,
@@ -79,8 +116,30 @@ export function sendDm(
   host = GRAPH_BASE,
   signal?: AbortSignal,
 ): Promise<unknown> {
-  return metaPost(`/${accountIgId}/messages`, token, {
+  const enviar = () => metaPost(`/${accountIgId}/messages`, token, {
     recipient: { id: recipientIgId },
     message: buildMessagePayload(text, buttons),
   }, {}, host, signal);
+
+  try {
+    return await enviar();
+  } catch (erro) {
+    if (!semPosseDaConversa(erro)) throw erro;
+    try {
+      await takeThreadControl(accountIgId, recipientIgId, token, host, signal);
+    } catch (erroDaPosse) {
+      // Sai como MetaApiError com o status e o corpo do envio, não da posse:
+      // quem lê isso em cima classifica recusa da Meta por esse status, e uma
+      // recusa de 400 não pode virar incerteza só porque houve um segundo erro.
+      // As duas frases juntas, para o registro dizer onde parou.
+      throw new MetaApiError(
+        `${erro.message} | pedido de posse da conversa recusado: ${
+          erroDaPosse instanceof Error ? erroDaPosse.message : String(erroDaPosse)
+        }`,
+        erro.status,
+        erro.body,
+      );
+    }
+    return enviar();
+  }
 }
