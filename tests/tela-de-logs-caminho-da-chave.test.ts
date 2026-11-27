@@ -122,23 +122,47 @@ describe('o caminho até a chave das mensagens', () => {
   });
 
   /*
-   * Parar na chave é o defeito, não a cura.
+   * O nome da primeira tela, que estava errado desde sempre.
    *
-   * Em 27/11/2026 uma conta com a chave "Permitir acesso às mensagens"
-   * LIGADA e o aplicativo fora de "Ferramentas conectadas" recebia comentário,
-   * eco e confirmação de leitura, e nenhuma mensagem de ninguém. Quem seguia o
-   * conselho antigo conferia a chave, via ligada, e concluía que a causa era
-   * outra — e era essa. A chave governa a conta; a lista governa quem recebe.
-   *
-   * Esta guarda exige o passo que faltava. Ela não proíbe falar da chave: a
-   * chave desligada continua sendo causa, e proibir a frase inteira reprovaria
-   * o texto legítimo.
+   * Em 27/11/2026 os prints das telas de verdade mostraram que ela se chama
+   * "Configurações e atividade". "Configurações e privacidade" não existe no
+   * aplicativo, e estava escrito aqui, no guia e na skill.
    */
-  it('exige que o aplicativo apareça na lista, e não só a chave ligada', async () => {
+  it('começa o caminho pela tela que existe', async () => {
+    const html = await abrir();
+
+    expect(html).toContain('Configurações e atividade');
+    expect(html).not.toContain('Configurações e privacidade');
+  });
+
+  /*
+   * "Ferramentas conectadas" é título de seção, não lista.
+   *
+   * Por algumas horas de 27/11/2026 esta tela mandou a pessoa conferir se o
+   * aplicativo dela aparecia numa lista de ferramentas conectadas. Essa lista
+   * não existe: embaixo daquele título há uma chave e nada mais. Mandar
+   * procurar o que não existe é pior do que o texto que isso substituiu,
+   * porque quem não acha conclui que o problema é ele.
+   *
+   * A guarda proíbe a forma errada e não a família inteira. Falar do título
+   * da seção continua legítimo, e é por ele que a pessoa se localiza na tela.
+   * E "lista" sozinho não pode ser proibido: esta mesma tela fala, com razão,
+   * da lista de avisos que a conta assinou, que é outra coisa e é verdadeira.
+   */
+  it('não manda procurar o aplicativo numa lista que não existe', async () => {
     const html = await abrir();
 
     expect(html).toContain('Ferramentas conectadas');
-    expect(html).toContain('aparecer nessa lista');
+    expect(html).not.toMatch(/aplicativo[^.]{0,60}(aparecer|estar) n[a-z]* lista/i);
+  });
+
+  /*
+   * Com a chave ligada o aviso perde a função se parar na chave, e inventar a
+   * causa seguinte é pior ainda: nenhuma foi medida. Dizer até onde sabe é o
+   * que resta, e é honesto.
+   */
+  it('diz o que fazer quando a chave já estiver ligada', async () => {
+    expect(await abrir()).toContain('já estiver ligada');
   });
 
   /*
@@ -212,7 +236,7 @@ describe('o caminho até a chave das mensagens', () => {
     const html = await abrir();
 
     expect(html).toContain('DM escrita agora');
-    expect(html).toContain('aparecer nessa lista');
+    expect(html).toContain('Configurações e atividade');
   });
 
   /*

@@ -102,38 +102,36 @@ não entrega nada. É hoje a causa mais comum de "configurei tudo e não chega".
 
 ### "Comentário funciona, mas resposta de Story e DM não chegam"
 
-A causa está quase sempre numa tela só do Instagram: **Configurações e
-privacidade → Mensagens e respostas a stories → Pedidos de contato →
-Ferramentas conectadas**.
+A causa mais comum é a chave **"Permitir acesso às mensagens"** desligada na
+conta do Instagram. No app: **Configurações e atividade → Mensagens e respostas
+a stories → Pedidos de contato → Ferramentas conectadas**.
 
-Peça **duas** coisas dessa tela, nesta ordem, e não pare na primeira:
+"Ferramentas conectadas" é o **título da seção** onde a chave fica, no meio da
+tela de Pedidos de contato. Não é uma tela, não é uma lista de aplicativos, e
+não há nada ali para conferir além da chave.
 
-1. A chave **"Permitir acesso às mensagens"** está ligada?
-2. **O aplicativo dela aparece na lista de ferramentas conectadas?**
+O caminho acima foi lido dos prints das telas de verdade, na ordem, em
+27/11/2026. Dois erros nossos moram nele:
 
-A segunda é a que engana, e é a mais fácil de perder. O Instagram entrega o que
-as pessoas escrevem só para os aplicativos que estão naquela lista. Com a chave
-ligada e o aplicativo fora dela, o sintoma é idêntico ao da chave desligada.
+- Estava escrito "Configurações e **privacidade**", que não existe no
+  aplicativo. O nome é "Configurações e **atividade**".
+- Antes de 26/11 estava escrito "respostas **de** stories" e faltava o passo
+  "Pedidos de contato": quem seguia aquilo chegava numa tela sem a chave e
+  concluía que a chave não existia.
 
-Se o aplicativo não estiver na lista, o conserto é reconectar a conta pelo
-painel, em **Configuração**, que é o que o põe lá.
+**Ligada não encerra o caso.** Em 27/11/2026 uma conta tinha a chave ligada e
+mesmo assim nenhuma mensagem escrita de outra pessoa chegava, enquanto
+comentário, eco da DM e confirmação de leitura entravam normalmente. Por
+algumas horas daquele dia este texto mandou procurar o aplicativo numa "lista
+de ferramentas conectadas" que não existe, e isso saiu publicado. Quando a
+pessoa mandar o print com a chave ligada, **não invente a causa seguinte**:
+ela não foi identificada, e mandar mexer no aplicativo às cegas custa a tarde
+de alguém. Diga que a chave está descartada e escale.
 
-O caminho acima foi lido da tela, na ordem, em 26/11/2026. Até então estava
-escrito "respostas **de** stories" e sem o passo "Pedidos de contato", que é
-onde "Ferramentas conectadas" mora: quem seguiu aquilo chegou numa tela sem a
-chave e concluiu que a chave não existia.
-
-O segundo passo nasceu em 27/11/2026, e nasceu de um erro nosso que custou uma
-madrugada. Uma conta tinha a chave ligada, e a pergunta que a gente fazia
-parava aí; o dono conferiu, respondeu "estava ligada já", e a investigação foi
-procurar em token, aplicativo trocado e restrição da Meta. O aplicativo
-simplesmente não estava na lista. **Print da chave ligada não encerra este
-caminho: peça o print da lista.**
-
-Faltando qualquer uma das duas, o Instagram não entrega nada que as pessoas
-escrevem. O envio continua funcionando, e por isso o eco da DM e a confirmação
-de leitura aparecem nos **Eventos recebidos** — o que faz parecer que mensagem
-está chegando. Não está: repare que só aparecem comentários, ecos e leituras, e
+Com a chave desligada, o Instagram não entrega nada que as pessoas escrevem. O
+envio continua funcionando, e por isso o eco da DM e a confirmação de leitura
+aparecem nos **Eventos recebidos** — o que faz parecer que mensagem está
+chegando. Não está: repare que só aparecem comentários, ecos e leituras, e
 nunca uma mensagem de alguém.
 
 **Clique em botão da DM pode continuar chegando**, e foi assim no caso de

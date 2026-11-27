@@ -169,29 +169,39 @@ export default async function LogsPage({
   /*
    * O conselho, escrito uma vez só porque os dois estados dão o mesmo.
    *
-   * O caminho foi lido da tela do Instagram, na ordem, em 26/11/2026, a partir
-   * do print de uma instalação de verdade. Texto que descreve a tela de outro
-   * sistema não é protegido por teste nenhum: confere-se lendo, como a pessoa
-   * lê.
+   * O caminho foi lido dos prints das telas de verdade, na ordem, em
+   * 27/11/2026. A primeira tela chama-se "Configurações e atividade". Até esta
+   * data estava escrito "Configurações e privacidade" aqui, no guia e na
+   * skill, e esse nome não existe no aplicativo.
    *
-   * E ele parou de mandar "ligue a chave". Em 27/11/2026 uma conta com a chave
-   * LIGADA e o aplicativo fora da lista recebia comentário, eco e confirmação
-   * de leitura, e nenhuma mensagem de ninguém. Quem seguia o conselho antigo
-   * conferia, via ligado, e concluía que não era isso — e era. A chave governa
-   * a conta; a lista governa quem recebe.
+   * "Ferramentas conectadas" é um TÍTULO DE SEÇÃO dentro de "Pedidos de
+   * contato", não uma tela e não uma lista: embaixo dele existe uma coisa só,
+   * a chave. Por algumas horas de 27/11/2026 estes três textos mandaram a
+   * pessoa conferir se o aplicativo dela "aparecia na lista", uma lista que
+   * não existe. O erro nasceu de ler um "não" do dono de uma conta como "o
+   * aplicativo está faltando" quando ele queria dizer "não existe lista
+   * nenhuma", e de publicar sem ter visto a tela.
+   *
+   * O que fica, porque foi medido: naquela conta a chave estava LIGADA e
+   * mensagem escrita de outra pessoa não chegava, enquanto comentário, eco e
+   * confirmação de leitura chegavam. Então a chave ligada não encerra o
+   * assunto, e a causa seguinte não foi medida. Esta tela diz até onde sabe e
+   * para aí.
+   *
+   * Texto que descreve a tela de outro sistema não é protegido por teste
+   * nenhum: confere-se olhando a tela.
    */
   const comoAutorizar = (
     <>
       <strong>
-        Configurações e privacidade → Mensagens e respostas a stories → Pedidos
-        de contato → Ferramentas conectadas
+        Configurações e atividade → Mensagens e respostas a stories → Pedidos
+        de contato → Ferramentas conectadas → Permitir acesso às mensagens
       </strong>
-      . O aplicativo deste painel precisa <strong>aparecer nessa lista</strong>.
-      Ter a chave &ldquo;Permitir acesso às mensagens&rdquo; ligada não basta:
-      com ela ligada e o aplicativo fora da lista, o envio funciona, o eco e a
-      confirmação de leitura voltam, e nada que as pessoas escrevem chega. Se
-      ele não estiver lá, abra Configuração neste painel e conecte a conta de
-      novo, que é o que põe o aplicativo na lista.
+      . Enquanto essa chave estiver desligada, o envio funciona e o recebimento
+      não, e nada mais no painel denuncia isso. Se você conferir e ela já
+      estiver ligada, então não é isto: esta tela sozinha não diz o que é, e
+      nenhuma outra causa foi medida até agora. Guarde este aviso e procure o
+      suporte.
     </>
   );
   /*
