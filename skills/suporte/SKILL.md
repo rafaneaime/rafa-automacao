@@ -102,9 +102,19 @@ não entrega nada. É hoje a causa mais comum de "configurei tudo e não chega".
 
 ### "Comentário funciona, mas resposta de Story e DM não chegam"
 
-Esse recorte tem uma causa só: a chave **"Permitir acesso a mensagens"**
-desligada na conta do Instagram. No app: **Configurações e privacidade →
-Mensagens e respostas de stories → Ferramentas conectadas**.
+A causa mais comum é a chave **"Permitir acesso às mensagens"** desligada na
+conta do Instagram. No app: **Configurações e privacidade → Mensagens e
+respostas a stories → Pedidos de contato → Ferramentas conectadas**.
+
+O caminho acima foi lido da tela, na ordem, em 26/11/2026. Até então estava
+escrito "respostas **de** stories" e sem o passo "Pedidos de contato", que é
+onde "Ferramentas conectadas" mora: quem seguiu aquilo chegou numa tela sem a
+chave e concluiu que a chave não existia.
+
+E não é causa única. Em 26/11/2026 apareceu a primeira instalação com a chave
+**já ligada** e nenhuma mensagem entrando em 30 dias. Quando a pessoa mandar o
+print com a chave ligada, não insista neste caminho: o que vem depois ainda não
+foi medido, e mandar mexer no aplicativo às cegas custa a tarde de alguém.
 
 Desligada, o Instagram não entrega nada que as pessoas mandam. O envio
 continua funcionando, e por isso o eco da DM e a confirmação de leitura

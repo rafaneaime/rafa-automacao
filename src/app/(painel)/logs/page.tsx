@@ -11,6 +11,7 @@ import { listDeliveries } from '@/lib/repo/deliveries';
 import { listRecentEvents, recebimentoPorTipo } from '@/lib/repo/webhook-events';
 import { resumirEntrega } from '@/lib/painel/resumo-da-entrega';
 import { contaDoAviso } from '@/lib/painel/conta-do-aviso';
+import { janelaObservada } from '@/lib/painel/janela-observada';
 import {
   aplicativosEstranhos,
   assinaturaDoAplicativo,
@@ -138,9 +139,24 @@ export default async function LogsPage({
    */
   // Chega comentário e nunca chega mensagem: ver `recebimentoPorTipo`.
   const recebimento = await recebimentoPorTipo().catch(() => null);
+  /*
+   * Clique em botão entra na conta. Ele chega em `postback`, sem campo de
+   * texto, e automação com botão é a forma recomendada na própria tela de
+   * automações. Numa instalação assim o recebimento inteiro pode ser clique:
+   * contar só texto acusaria o Instagram de não entregar o que ele entregou.
+   */
   const mensagemNuncaChega = Boolean(
-    recebimento && recebimento.comentarios >= 3 && recebimento.entrada === 0,
+    recebimento &&
+      recebimento.comentarios >= 3 &&
+      recebimento.entrada === 0 &&
+      (recebimento.cliques ?? 0) === 0,
   );
+  /*
+   * O aviso diz em quanto tempo mediu, e não a janela da consulta. Ver
+   * `janelaObservada`: a frase antiga afirmava 30 dias em painel de horas.
+   */
+  const janelaCrua = janelaObservada(recebimento?.desde ?? null, new Date());
+  const janela = janelaCrua.charAt(0).toUpperCase() + janelaCrua.slice(1);
 
   const leitura = await assinaturaDoAplicativo(
     process.env.IG_APP_ID ?? '',
@@ -288,16 +304,45 @@ export default async function LogsPage({
           {mensagemNuncaChega && (
             <div className="mb-3 rounded-lg bg-caindo-tenue px-4 py-3 text-sm">
               <p className="font-medium text-caindo-forte">
-                Comentário chega aqui e mensagem nunca chegou.
+                Comentário chega aqui e mensagem não.
               </p>
               <p className="mt-1 text-tinta-media">
-                Nos últimos 30 dias entraram comentários, e nenhuma mensagem de
-                ninguém — nem DM, nem resposta de Story. Isso quase sempre é uma
-                chave desligada na conta do Instagram:{' '}
-                <strong>Configurações e privacidade → Mensagens e respostas de
-                stories → Ferramentas conectadas → Permitir acesso a mensagens</strong>.
-                Enquanto ela estiver desligada, o envio funciona e o recebimento não,
-                e nada mais no painel denuncia isso.
+                {/*
+                  O tempo medido de verdade, e não os 30 dias da consulta. Num
+                  painel ligado hoje a frase antiga afirmava 30 dias de
+                  observação que não existiam, e em 26/11/2026 mandou uma
+                  investigação inteira atrás de uma chave que estava certa.
+                */}
+                <strong>{janela}</strong> entraram {recebimento?.comentarios ?? 0}{' '}
+                comentários e nada vindo de ninguém: nem DM, nem resposta de
+                Story, nem clique em botão. A causa mais comum é uma chave
+                desligada na conta do Instagram:{' '}
+                {/*
+                  O caminho abaixo foi lido da tela do Instagram, na ordem, em
+                  26/11/2026, a partir do print de uma instalação de verdade.
+                  Antes dizia "Mensagens e respostas DE stories" e pulava
+                  "Pedidos de contato", que é onde "Ferramentas conectadas" mora.
+                  Quem seguiu aquele caminho chegou numa tela que não tem a
+                  chave, e concluiu que a chave não existia. Texto que descreve
+                  a tela de outro sistema não é protegido por teste nenhum: ele
+                  se confere lendo, na ordem, como a pessoa lê.
+                */}
+                <strong>Configurações e privacidade → Mensagens e respostas a
+                stories → Pedidos de contato → Ferramentas conectadas → Permitir
+                acesso às mensagens</strong>. Enquanto ela estiver desligada, o
+                envio funciona e o recebimento não, e nada mais no painel
+                denuncia isso.{' '}
+                {/*
+                  Em 26/11/2026 apareceu a primeira instalação com a chave já
+                  ligada e mensagem nenhuma chegando. Então "quase sempre" não
+                  é "sempre", e a tela precisa dizer o que fazer quando não é.
+                  O que ela NÃO faz é apontar a próxima causa: nenhuma foi
+                  medida ainda, e chutar aqui mandaria a pessoa mexer no
+                  aplicativo dela atrás de um defeito que talvez não esteja lá.
+                */}
+                Se você conferir e ela já estiver ligada, então não é isto, e
+                esta tela sozinha não diz o que é: guarde este aviso e procure o
+                suporte.
               </p>
             </div>
           )}
